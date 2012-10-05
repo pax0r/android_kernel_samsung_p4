@@ -1376,10 +1376,17 @@ static int P3_s5k5ccgx_torch(int enable)
 	}
 #endif
 	gpio_set_value(GPIO_CAM_FLASH_EN, 0);
-	if (enable)
-		aat1274_write(FLASH_MOVIE_MODE_CURRENT_79_PERCENT);
-	else
-		gpio_set_value(GPIO_CAM_MOVIE_EN, 0);
+        switch (enable) {
+                case 42:  // High mode available with magic number
+                        aat1274_write(FLASH_MOVIE_MODE_CURRENT_100_PERCENT);
+                        break;
+                case 0:
+                        gpio_set_value(GPIO_CAM_MOVIE_EN, 0);
+                        break;
+                default:
+                        aat1274_write(FLASH_MOVIE_MODE_CURRENT_79_PERCENT);
+                        break;
+        }
 	return 0;
 }
 
