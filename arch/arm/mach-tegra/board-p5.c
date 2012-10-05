@@ -172,6 +172,7 @@ static int write_bootloader_message(char *cmd, int mode)
 #ifdef CONFIG_KERNEL_DEBUG_SEC
 		reboot_mode = REBOOT_MODE_RECOVERY;
 		kernel_sec_set_debug_level(KERNEL_SEC_DEBUG_LEVEL_MID);
+		kernel_sec_clear_upload_magic_number();
 		state = 1;	/* Set USB path to AP */
 		sec_set_param(param_index_usbsel, &state);
 #endif
@@ -813,7 +814,7 @@ static struct p3_battery_platform_data p3_battery_platform = {
 	.inform_charger_connection = tsp_inform_charger_connection,
 #endif
 
-#ifdef CONFIG_TARGET_LOCALE_KOR
+#if defined(CONFIG_TARGET_LOCALE_KOR)
 	.temp_high_threshold = 63000,	/* 580 (spec) + 35 (dT) */
 	.temp_high_recovery = 45500,	/* 417 */
 	.temp_low_recovery = 2300,		/* -10 */
@@ -1092,7 +1093,7 @@ static void tegra_usb_ldo_en(int active, int instance)
 			if (ret == 0)
 				usb_data.usb_regulator_on[instance] = 1;
 			else
-				pr_err("%s: failed to turn on \\
+				pr_err("%s: failed to turn on \
 					vdd_ldo6 regulator\n", __func__);
 		}
 	} else {
