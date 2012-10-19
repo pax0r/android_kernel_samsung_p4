@@ -2511,6 +2511,7 @@ static void sd_scanpartition_async(void *data, async_cookie_t cookie)
 	struct hd_struct *part;
 	int err;
 
+	msleep(700);
 	/* delay uevents, until we scanned partition table */
 	dev_set_uevent_suppress(ddev, 1);
 
@@ -2554,6 +2555,7 @@ exit:
 	disk_part_iter_exit(&piter);
 
 	sdkp->async_end = 1;
+	sdkp->device->device_not_ready_retry = 0;
 	wake_up_interruptible(&sdkp->delay_wait);
 }
 
@@ -2747,6 +2749,7 @@ static int sd_probe(struct device *dev)
 		init_waitqueue_head(&sdkp->delay_wait);
 		init_completion(&sdkp->scanning_done);
 		sdkp->thread_remove = 0;
+		sdkp->device->device_not_ready_retry = 0;
 		sdkp->th = kthread_create(sd_media_scan_thread,
 						sdkp, "sd-media-scan");
 		if (IS_ERR(sdkp->th)) {

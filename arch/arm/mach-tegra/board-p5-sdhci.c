@@ -255,6 +255,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.is_8bit = 1,
 	.cd_gpio = -1,
 	.wp_gpio = -1,
+	.max_clk_limit = 45000000,
 	.mmc_data = {
 		.built_in = 1,
 	},
@@ -320,7 +321,7 @@ static int p3_wifi_power(int on)
 	pr_debug("%s: %d\n", __func__, on);
 
 	gpio_set_value(GPIO_WLAN_EN, on);
-	mdelay(100);
+	mdelay(200);
 
 	if (on)
 		clk_enable(wifi_32k_clk);

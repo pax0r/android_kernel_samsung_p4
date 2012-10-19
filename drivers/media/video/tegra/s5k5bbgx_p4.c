@@ -582,10 +582,11 @@ static int s5k5bbgx_set_esd_reset(struct s5k5bbgx_info *info, enum s5k5bbgx_esd_
 	return 0;
 }
 
+	int sensor_mode;
 
 static int s5k5bbgx_set_mode(struct s5k5bbgx_info *info, struct s5k5bbgx_mode *mode)
 {
-	int sensor_mode;
+
 	int err;
 
 	pr_info("%s: xres %u yres %u\n", __func__, mode->xres, mode->yres);
@@ -942,19 +943,33 @@ static int s5k5bbgx_set_frame_rate(struct s5k5bbgx_info *info, enum s5k5bbgx_cam
 #ifdef CONFIG_MACH_SAMSUNG_P5W_KT	// homepad
 		err = s5k5bbgx_write_table(info->i2c_client, mode_preview_fixframe_30fps);
 #else
+#ifdef CONFIG_MACH_SAMSUNG_P5
+	if (sensor_mode == S5K5BBGX_MODE_PREVIEW_640x480){
 		err = s5k5bbgx_write_table(info->i2c_client, mode_preview_800x600_fixframe);
+		pr_info("test recording frame - fix!!!\n");
+	}
+#else
+		err = s5k5bbgx_write_table(info->i2c_client, mode_preview_800x600_fixframe);
+#endif
 #endif
 #endif
 		break;
 	}
 	case FRONT_CAMMODE_CAMERA:
 	{
-	pr_debug("test recording frame - variable!!!\n");	
+	pr_debug("test recording frame - variable!!!\n");
 #ifdef CONFIG_LOAD_FILE
 		err = s5k5bbgx_write_tuningmode(info->i2c_client, "mode_return_camera_preview");
 		pr_info("s5k5bbgx_set_recording_frame - variable(tuning)    err(%d)!!!\n", err);
-#else	
+#else
+#ifdef CONFIG_MACH_SAMSUNG_P5
+	if (sensor_mode == S5K5BBGX_MODE_PREVIEW_800x600){
 		err = s5k5bbgx_write_table(info->i2c_client, mode_return_camera_preview);
+		pr_info("test recording frame - variable!!!\n");
+	}
+#else
+		err = s5k5bbgx_write_table(info->i2c_client, mode_return_camera_preview);
+#endif
 #endif
 		break;
 	}
@@ -968,6 +983,7 @@ static int s5k5bbgx_set_frame_rate(struct s5k5bbgx_info *info, enum s5k5bbgx_cam
 		err = s5k5bbgx_write_table(info->i2c_client, mode_preview_fixframe_15fps);
 #else
 		err = s5k5bbgx_write_table(info->i2c_client, mode_preview_800x600_fixframe_15fps);
+		pr_info("test recording frame - mms  fix!!!\n");
 #endif
 #endif
 		break;
@@ -1204,6 +1220,7 @@ static int s5k5bbgx_open(struct inode *inode, struct file *file)
 #else	
 	//status = s5k5bbgx_write_table(pinfo->i2c_client, mode_table[0]);
 	status = S5K5BBGX_BURST_WRITE_LIST(mode_sensor_init);
+	msleep(300);
 #endif
 	if (status < 0)
 		info->pdata->power_off();

@@ -171,7 +171,7 @@ static int write_bootloader_message(char *cmd, int mode)
 		strcpy(bootmsg.command, "boot-recovery");
 #ifdef CONFIG_KERNEL_DEBUG_SEC
 		reboot_mode = REBOOT_MODE_RECOVERY;
-		kernel_sec_set_debug_level(KERNEL_SEC_DEBUG_LEVEL_MID);
+		kernel_sec_set_debug_level(KERNEL_SEC_DEBUG_LEVEL_LOW);
 		kernel_sec_clear_upload_magic_number();
 		state = 1;	/* Set USB path to AP */
 		sec_set_param(param_index_usbsel, &state);
@@ -398,11 +398,11 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_74[] = {
 	/* name		parent		rate		enabled */
 	{ "uartb",	"pll_p",	216000000,	true},
 	{ "uartc",      "pll_m",        600000000,      false},
-	{ "blink",      "clk_32k",      32768,          true},
+	{ "blink",      "clk_32k",      32768,          false},
 	{ "pll_p_out4",	"pll_p",	24000000,	true },
+	{ "pwm",	"clk_32k",	32768,		false},
 	/*Set PLLC for PLCK 74Mhz (560Mhz)*/
 	{ "pll_c",	"clk_m",	560000000,	true},
-	{ "pwm",	"pll_c",	560000000,	true},
 	{ "pll_a",	NULL,		11289600,	true},
 	{ "pll_a_out0",	NULL,		11289600,	true},
 	{ "clk_dev1",   "pll_a_out0",   0,              true},
@@ -412,8 +412,6 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_74[] = {
 	{ "audio_2x",	"audio",	22579200,	true},
 	{ "spdif_out",	"pll_a_out0",	5644800,	false},
 	{ "vde",	"pll_m",	240000000,	false},
-	{ "sclk", NULL, 240000000,  true},
-	{ "hclk", "sclk", 240000000,  true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -421,11 +419,11 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_76[] = {
 	/* name		parent		rate		enabled */
 	{ "uartb",	"pll_p",	216000000,	true},
 	{ "uartc",      "pll_m",        600000000,      false},
-	{ "blink",      "clk_32k",      32768,          true},
+	{ "blink",      "clk_32k",      32768,          false},
 	{ "pll_p_out4",	"pll_p",	24000000,	true },
+	{ "pwm",	"clk_32k",	32768,		false},
 	/*Set PLLC for PLCK 76Mhz (570Mhz)*/
 	{ "pll_c",	"clk_m",	570000000,	true},
-	{ "pwm",	"pll_c",	560000000,	true},
 	{ "pll_a",	NULL,		11289600,	true},
 	{ "pll_a_out0",	NULL,		11289600,	true},
 	{ "clk_dev1",   "pll_a_out0",   0,              true},
@@ -435,8 +433,6 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_76[] = {
 	{ "audio_2x",	"audio",	22579200,	true},
 	{ "spdif_out",	"pll_a_out0",	5644800,	false},
 	{ "vde",	"pll_m",	240000000,	false},
-	{ "sclk", NULL, 240000000,  true},
-	{ "hclk", "sclk", 240000000,  true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -1595,9 +1591,9 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[1] = {
 			.phy_config = &hsic_phy_config,
 			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 0,
+			.power_down_on_bus_suspend = 1,
 			.phy_type = TEGRA_USB_PHY_TYPE_HSIC,
-			.default_enable = true,
+			.default_enable = false,
 	},
 #else
 	[1] = {
@@ -1758,35 +1754,11 @@ void p3_stmpe1801_gpio_setup_board(void)
 static void p3_power_off(void)
 {
 	int ret;
-	u32 value;
 
-	/* control modem power off before pmic control */
-	gpio_set_value(GPIO_RESET_REQ_N, 0);
-	udelay(500);    /* min 300us */
-	gpio_set_value(GPIO_CP_RST, 0);
-	gpio_set_value(GPIO_CP_ON, 0);
-	mdelay(50);
+	ret = tps6586x_power_off();
+	if (ret)
+		pr_err("p3: failed to power off\n");
 
-	/* prevent leakage current after power off */
-	if (system_rev >= 9)
-		gpio_set_value(GPIO_ACC_EN, 0);
-	mdelay(50);
-
-	value = gpio_get_value(GPIO_TA_nCONNECTED);
-	if (!value) {
-		pr_debug("%s: TA_nCONNECTED! Reset!\n", __func__);
-		ret = tps6586x_soft_rst();
-		if (ret)
-			pr_err("p3: failed to tps6586x_soft_rst(ret:%d)\n",
-				ret);
-	} else {
-		ret = tps6586x_power_off();
-		if (ret)
-			pr_err("p3: failed to power off(ret:%d)\n", ret);
-	}
-
-	mdelay(1000);
-	pr_alert("p3: system halted.\n");
 	while (1)
 		;
 }
@@ -1963,7 +1935,7 @@ static void __init tegra_p3_init(void)
 #endif
 
 	p3_usb_init();
-	/* p3_gps_init(); */
+	p3_gps_init();
 	p3_panel_init();
 	p3_sensors_init();
 	p3_emc_init();

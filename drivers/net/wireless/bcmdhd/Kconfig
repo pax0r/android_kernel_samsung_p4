@@ -31,6 +31,11 @@ config BROADCOM_WIFI_RESERVED_MEM
 	---help---
 		This is a configuration for broadcom WLAN driver.
 
+config BRCM_CCX
+	bool "BROADCOM CCX"
+	depends on WLAN
+	default n
+
 config WLAN_COUNTRY_CODE
 	tristate "---Broadcom WiFi Driver for 5GH channel setting"
    	depends on WLAN

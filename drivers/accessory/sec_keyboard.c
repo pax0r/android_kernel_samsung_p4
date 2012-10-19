@@ -13,7 +13,7 @@ static void sec_keyboard_power(struct work_struct *work)
 			struct sec_keyboard_drvdata, power_dwork.work);
 
 	if (UNKOWN_KEYLAYOUT == data->kl) {
-		data->acc_power(1, false);
+		data->acc_power(2, false);
 		data->pre_connected = false;
 
 		if (data->check_uart_path)
@@ -143,8 +143,18 @@ static int check_keyboard_dock(struct sec_keyboard_callbacks *cb, bool val)
 	int try_cnt = 0;
 	int max_cnt = 14;
 
-	if (NULL == data->serio)
+	if (NULL == data->serio) {
+		for (try_cnt = 0; try_cnt < max_cnt; try_cnt++) {
+			msleep(50);
+			if (data->tx_ready)
+				break;
+
+			if (gpio_get_value(data->acc_int_gpio)) {
+				printk(KERN_DEBUG "[Keyboard] acc is disconnected.\n");
 		return 0;
+			}
+		}
+	}
 
 	if (!val)
 		data->dockconnected = false;
@@ -154,7 +164,7 @@ static int check_keyboard_dock(struct sec_keyboard_callbacks *cb, bool val)
 		if (data->pre_connected) {
 			if (UNKOWN_KEYLAYOUT != data->pre_kl) {
 				data->kl = data->pre_kl;
-				data->acc_power(1, true);
+				data->acc_power(2, true);
 				printk(KERN_DEBUG "[Keyboard] kl : %d\n",
 					data->pre_kl);
 				return 1;
@@ -171,7 +181,7 @@ static int check_keyboard_dock(struct sec_keyboard_callbacks *cb, bool val)
 			data->check_uart_path(true);
 
 		msleep(200);
-		data->acc_power(1, true);
+		data->acc_power(2, true);
 
 		/* try to get handshake data */
 		for (try_cnt = 0; try_cnt < max_cnt; try_cnt++) {
@@ -212,6 +222,9 @@ static int sec_keyboard_event(struct input_dev *dev,
 			sec_keyboard_tx(data, 0xca);
 		else
 			sec_keyboard_tx(data, 0xcb);
+
+	printk(KERN_DEBUG "[Keyboard] %s, capslock on led value=%d\n",\
+		 __func__, value);
 		return 0;
 	}
 	return -1;

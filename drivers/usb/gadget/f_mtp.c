@@ -942,9 +942,22 @@ out:
 	return ret;
 }
 
+#ifdef CONFIG_MACH_SAMSUNG_P3
+static int mtp_clk_lock_status;
+#endif
 static int mtp_open(struct inode *ip, struct file *fp)
 {
 	printk(KERN_INFO "mtp_open\n");
+#ifdef CONFIG_MACH_SAMSUNG_P3
+	/* cpu clock and sclk set max clock */
+	if (!mtp_clk_lock_status) {
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+		tegra_cpu_lock_speed(1000000, 0);
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+		fsl_udc_lock_sclk(240000000);
+		mtp_clk_lock_status = true;
+	}
+#endif
 	if (mtp_lock(&_mtp_dev->open_excl))
 		return -EBUSY;
 
@@ -959,7 +972,16 @@ static int mtp_open(struct inode *ip, struct file *fp)
 static int mtp_release(struct inode *ip, struct file *fp)
 {
 	printk(KERN_INFO "mtp_release\n");
-
+#ifdef CONFIG_MACH_SAMSUNG_P3
+	/* cpu clock and sclk restore original clock */
+	if (mtp_clk_lock_status) {
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+		tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+		fsl_udc_unlock_sclk();
+		mtp_clk_lock_status = false;
+	}
+#endif
 	mtp_unlock(&_mtp_dev->open_excl);
 	return 0;
 }

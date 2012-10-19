@@ -71,38 +71,6 @@
 #define	__SAMSUNG_HDMI_FLAG_WORKAROUND__
 #endif
 
-struct tegra_dc_hdmi_data {
-	struct tegra_dc			*dc;
-	struct tegra_edid		*edid;
-	struct tegra_edid_hdmi_eld		eld;
-	struct tegra_nvhdcp		*nvhdcp;
-	struct delayed_work		work;
-
-	struct resource			*base_res;
-	void __iomem			*base;
-	struct clk			*clk;
-
-	struct clk			*disp1_clk;
-	struct clk			*disp2_clk;
-	struct clk			*hda_clk;
-	struct clk			*hda2codec_clk;
-	struct clk			*hda2hdmi_clk;
-
-#ifdef CONFIG_SWITCH
-	struct switch_dev		hpd_switch;
-#endif
-
-	spinlock_t			suspend_lock;
-	bool				suspended;
-	bool				eld_retrieved;
-	bool				clk_enabled;
-	unsigned			audio_freq;
-	unsigned			audio_source;
-	bool				audio_inject_null;
-
-	bool				dvi;
-};
-
 struct tegra_dc_hdmi_data *dc_hdmi;
 
 const struct fb_videomode tegra_dc_hdmi_supported_modes[] = {

@@ -29,6 +29,7 @@
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
+#include <mach/tegra_das.h>
 #include <asm/io.h>
 #ifdef CONFIG_VIBTONZ
 #include "clock.h"
@@ -252,82 +253,87 @@ static inline void das_writel(unsigned long value, unsigned long offset)
 
 static void tegra_set_dap_connection(bool on)
 {
-#if 0 /* audio codec temporary removed */
 	int reg_val;
 
 	pr_info("Board P4 : %s : %d\n", __func__, on);
-	if(on) {
-#if 0
-		das_writel(DAP_CTRL_SEL_DAP3, APB_MISC_DAS_DAP_CTRL_SEL_1);
-		das_writel(DAP_CTRL_SEL_DAP3, APB_MISC_DAS_DAP_CTRL_SEL_3);
-		das_writel((DAP_MS_SEL_MASTER /*| DAP_CTRL_SEL_DAP2*/ | DAP_CTRL_SEL_DAP4),
-			APB_MISC_DAS_DAP_CTRL_SEL_2);
-#else
-
-		//DAP1
+	if (on) {
+		/* DAP1 */
 		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_0);
 
 		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
-		reg_val |= (1 << DAP_MS_SEL_SHIFT); //DAP1 master
+		reg_val |= (1 << DAP_MS_SEL_SHIFT);
 
 		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
-		reg_val |= (DAP_CTRL_SEL_DAC1 << DAP_CTRL_SEL_SHIFT); //DAP1<-DAC1
+		reg_val |= (DAP_CTRL_SEL_DAC1 << DAP_CTRL_SEL_SHIFT);
 
 		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_0);
 
-		//DAP2
+		/* DAP2 */
 		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_1);
 
 		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
-		reg_val |= (1 << DAP_MS_SEL_SHIFT);//DAP2 master
+		reg_val |= (1 << DAP_MS_SEL_SHIFT);
 
 		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
-		reg_val |= (DAP_CTRL_SEL_DAP4 << DAP_CTRL_SEL_SHIFT);//DAP2<-DAP4
+		reg_val |= (DAP_CTRL_SEL_DAP4 << DAP_CTRL_SEL_SHIFT);
 
 		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_1);
 
-		//DAP3
+		/* DAP3 */
 		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_2);
 
 		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
-		reg_val |= (1 << DAP_MS_SEL_SHIFT);//DAP3 master
+		reg_val |= (1 << DAP_MS_SEL_SHIFT);
 
 		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
-		reg_val |= (DAP_CTRL_SEL_DAP4 << DAP_CTRL_SEL_SHIFT);//DAP3<-DAP4
+		reg_val |= (DAP_CTRL_SEL_DAP4 << DAP_CTRL_SEL_SHIFT);
 
 		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_2);
 
-		//DAP4
+		/* DAP4 */
 		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_3);
 
 		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
-		reg_val |= (0 << DAP_MS_SEL_SHIFT);//DAP4 slave
+		reg_val |= (0 << DAP_MS_SEL_SHIFT);
 
 		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
-		reg_val |= (DAP_CTRL_SEL_DAP2 << DAP_CTRL_SEL_SHIFT);//DAP4<-DAP2
+		reg_val |= (DAP_CTRL_SEL_DAP2 << DAP_CTRL_SEL_SHIFT);
 
 		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_3);
 
-		//DAC1
+		/* DAC1 */
 		reg_val = das_readl(APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0);
 
-		reg_val &= ~(DAC_SDATA2_SEL_DEFAULT_MASK << DAC_SDATA2_SEL_SHIFT);
-		reg_val |= ((DAP_CTRL_SEL_DAP1 - DAP_CTRL_SEL_DAP1) << DAC_SDATA2_SEL_SHIFT);//DAC1 <- DAP1
+		reg_val &= ~(DAC_SDATA2_SEL_DEFAULT_MASK
+			<< DAC_SDATA2_SEL_SHIFT);
+		reg_val |= ((DAP_CTRL_SEL_DAP1 - DAP_CTRL_SEL_DAP1)
+			<< DAC_SDATA2_SEL_SHIFT);
 
-		reg_val &= ~(DAC_SDATA1_SEL_DEFAULT_MASK << DAC_SDATA1_SEL_SHIFT);
-		reg_val |= ((DAP_CTRL_SEL_DAP1 - DAP_CTRL_SEL_DAP1) << DAC_SDATA1_SEL_SHIFT);//DAC1 <- DAP1
+		reg_val &= ~(DAC_SDATA1_SEL_DEFAULT_MASK
+			<< DAC_SDATA1_SEL_SHIFT);
+		reg_val |= ((DAP_CTRL_SEL_DAP1 - DAP_CTRL_SEL_DAP1)
+			<< DAC_SDATA1_SEL_SHIFT);
 
 		reg_val &= ~(DAC_CLK_SEL_DEFAULT_MASK << DAC_CLK_SEL_SHIFT);
-		reg_val |= (DAP_CTRL_SEL_DAP1 << DAC_CLK_SEL_SHIFT);// DAC1 <- DAP1
+		reg_val |= (DAP_CTRL_SEL_DAP1 << DAC_CLK_SEL_SHIFT);
 
 		das_writel(reg_val, APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0);
-#endif
 	} else {
+		/* DAP3 */
 		das_writel(DAP_CTRL_SEL_DAP3, APB_MISC_DAS_DAP_CTRL_SEL_1);
 		das_writel((DAP_MS_SEL_MASTER | DAP_CTRL_SEL_DAP2),
 			APB_MISC_DAS_DAP_CTRL_SEL_2);
+		/* DAP4 */
+		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_3);
+
+		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
+		reg_val |= (0 << DAP_MS_SEL_SHIFT);
+
+		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
+		reg_val |= (DAP_CTRL_SEL_DAP2 << DAP_CTRL_SEL_SHIFT);
+
+		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_3);
 	}
-#endif
 }
 
 static struct wm8994_platform_data wm8994_pdata = {
@@ -419,7 +425,7 @@ static void sii9234_hw_reset(void)
 {
 	struct regulator *reg;
 
-	gpio_set_value(GPIO_MHL_RST, 1);
+	gpio_set_value(GPIO_MHL_RST, 0);
 	reg = regulator_get(NULL, "vdd_ldo7");
 	if (IS_ERR_OR_NULL(reg)) {
 		pr_err("%s: failed to get vdd_ldo7 regulator\n", __func__);
@@ -440,10 +446,14 @@ static void sii9234_hw_reset(void)
 	gpio_set_value(GPIO_HDMI_EN1, 1);
 
 	usleep_range(5000, 10000);
+	gpio_set_value(GPIO_MHL_RST, 1);
+
+	usleep_range(10000, 20000);
 	gpio_set_value(GPIO_MHL_RST, 0);
 
 	usleep_range(10000, 20000);
 	gpio_set_value(GPIO_MHL_RST, 1);
+
 	msleep(30);
 }
 
@@ -562,3 +572,4 @@ int __init p3_gpio_i2c_init(void)
 	}
 	return 0;
 }
+

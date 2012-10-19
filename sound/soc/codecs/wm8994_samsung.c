@@ -46,6 +46,8 @@
 #define WM8994_VERSION "0.1"
 #define SUBJECT "wm8994_samsung.c"
 
+#define CONFIG_SND_SOC_P5_AUDIO_HKTW 1 //jm.choi_2010.07.04 add for audio
+
 #if defined(CONFIG_VIDEO_TV20) && defined(CONFIG_SND_S5P_WM8994_MASTER)
 #define HDMI_USE_AUDIO
 #endif
@@ -892,6 +894,11 @@ static int wm8994_set_headset_analog_vol(struct snd_kcontrol *kcontrol,
 		return;
 
 #else
+#if defined(CONFIG_SND_SOC_P5_AUDIO_HKTW)
+	unsigned short analog_vol_table[] = {0x17, 0x17, 0x17, 0x17, 0x17, 0x17,
+						0x1A, 0x1D, 0x21, 0x24, 0x27,
+						0x29, 0x2c, 0x30, 0x34, 0x36};
+#else
 	/* Europe */
 	unsigned short analog_vol_table_EUR[] = {0x17, 0x17, 0x17, 0x17, 0x17,
 						0x17, 0x1A, 0x1D, 0x1F, 0x21,
@@ -911,6 +918,7 @@ static int wm8994_set_headset_analog_vol(struct snd_kcontrol *kcontrol,
 		analog_vol_table = analog_vol_table_USA;
 	else
 		analog_vol_table = analog_vol_table_EUR;
+#endif
 #endif
 #else
 	unsigned short analog_vol_table[] = {0x17, 0x17, 0x17, 0x17, 0x17, 0x17,
@@ -1680,6 +1688,17 @@ void wm8994_shutdown(struct snd_pcm_substream *substream,
 		return;
 	}
 
+#if defined(CONFIG_MACH_SAMSUNG_P4) || defined(CONFIG_MACH_SAMSUNG_P4WIFI) \
+	|| defined(CONFIG_MACH_SAMSUNG_P4LTE) \
+	|| defined(CONFIG_TARGET_LOCALE_KOR)
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		wm8994->stream_state &=  ~(PCM_STREAM_CAPTURE);
+		wm8994->codec_state &= ~(CAPTURE_ACTIVE);
+	} else {
+		wm8994->codec_state &= ~(PLAYBACK_ACTIVE);
+		wm8994->stream_state &= ~(PCM_STREAM_PLAYBACK);
+	}
+#else
 	/* check and sync the capture flag */
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		wm8994->stream_state &=  ~(PCM_STREAM_CAPTURE);
@@ -1702,6 +1721,7 @@ void wm8994_shutdown(struct snd_pcm_substream *substream,
 			wm8994_write(codec, WM8994_AIF1_DAC1_FILTERS_1, val);
 		}
 	}
+#endif
 
 	/* codec off */
 	if ((wm8994->codec_state == DEACTIVE) &&
@@ -1730,6 +1750,24 @@ void wm8994_shutdown(struct snd_pcm_substream *substream,
 	DEBUG_LOG("Preserve codec state = [0x%X], Stream State = [0x%X]",
 			wm8994->codec_state, wm8994->stream_state);
 
+#if defined(CONFIG_MACH_SAMSUNG_P4) || defined(CONFIG_MACH_SAMSUNG_P4WIFI) \
+	|| defined(CONFIG_MACH_SAMSUNG_P4LTE) \
+	|| defined(CONFIG_TARGET_LOCALE_KOR)
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		wm8994_disable_rec_path(codec);
+		wm8994->codec_state &= ~(CAPTURE_ACTIVE);
+	} else {
+		if (wm8994->codec_state & CALL_ACTIVE) {
+			int val;
+
+			val = wm8994_read(codec, WM8994_AIF1_DAC1_FILTERS_1);
+			val &= ~(WM8994_AIF1DAC1_MUTE_MASK);
+			val |= (WM8994_AIF1DAC1_MUTE);
+			wm8994_write(codec, WM8994_AIF1_DAC1_FILTERS_1, val);
+		} else
+			wm8994_disable_path(codec);
+	}
+#endif
 }
 
 #define WM8994_RATES SNDRV_PCM_RATE_44100

@@ -554,6 +554,8 @@ static struct s5k5ccgx_state *state;
 extern struct i2c_client *i2c_client_pmic;
 #endif
 
+int firstBusy;
+
 /**
  * s5k5ccgx_i2c_read_twobyte: Read 2 bytes from sensor
  */
@@ -2148,6 +2150,7 @@ static int s5k5ccgx_autofocus_getresult(struct i2c_client *client, struct s5k5cc
 		result = s5k5ccgx_get_auto_focus_pre_check(state->i2c_client);
 		af_mode->param_2 = result;
 		frame_ignore = 0;
+		firstBusy = 0;
 	}
 	break;
 	case 1: /*1st search*/
@@ -2159,6 +2162,13 @@ static int s5k5ccgx_autofocus_getresult(struct i2c_client *client, struct s5k5cc
 			break;
 		}
 		result = s5k5ccgx_get_auto_focus_check_first_search(state->i2c_client);
+		if (!firstBusy) {
+			if (result == 0) {
+				result = 1;
+				PCAM_DEBUG("AF forced busy!");
+			} else
+				firstBusy = 1;
+		}
 		af_mode->param_2 = result;
 	}
 	break;
@@ -2214,10 +2224,12 @@ static int s5k5ccgx_set_cam_mode(unsigned long value)
 	printk("%s : value = %d\n\n", __func__, value);
 
 	if (value == CAMMODE_CAMCORDER)	{
-		/*TODO : do fix frame control*/
-		err = s5k5ccgx_set_from_table(state->i2c_client, "fps" , &state->regs->fps,
-				ARRAY_SIZE(state->regs->fps), FRAME_RATE_30);
-		printk("30 fps fix frame!!\n\n\n");
+		if (!(state->preview_framesize_index == S5K5CCGX_PREVIEW_PVGA)) {
+			/*TODO : do fix frame control*/
+			err = s5k5ccgx_set_from_table(state->i2c_client, "fps" , &state->regs->fps,
+					ARRAY_SIZE(state->regs->fps), FRAME_RATE_30);
+			printk("30 fps fix frame!!\n\n\n");
+		}
 	} else if (value == CAMMODE_MMS_CAMCORDER) {
 		err = s5k5ccgx_set_from_table(state->i2c_client, "fps" , &state->regs->fps,
 				ARRAY_SIZE(state->regs->fps), FRAME_RATE_15);
@@ -2490,6 +2502,10 @@ static long s5k5ccgx_ioctl(struct file *file,
 	case S5K5CCGX_IOCTL_SCENE_MODE:
 	{
 		PCAM_DEBUG("S5K5CCGX_IOCTL_SCENE_MODE ");
+
+		if (state->preview_framesize_index == S5K5CCGX_PREVIEW_PVGA)
+			break;
+
 		err = s5k5ccgx_set_scene(arg);
 		if (err < 0) {
 			dev_err(&state->i2c_client->dev,

@@ -188,6 +188,10 @@ int bcmsdh_probe(struct device *dev)
 
 	/* Get customer specific OOB IRQ parametres: IRQ number as IRQ type */
 	irq = dhd_customer_oob_irq_map(&irq_flags);
+#if defined(BCMHOST)
+	/* Do not disable this IRQ during suspend */
+	irq_flags |= IRQF_NO_SUSPEND;
+#endif
 	if  (irq < 0) {
 		SDLX_MSG(("%s: Host irq is not defined\n", __FUNCTION__));
 		return 1;

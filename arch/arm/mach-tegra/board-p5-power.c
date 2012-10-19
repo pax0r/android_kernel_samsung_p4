@@ -182,7 +182,7 @@ static struct regulator_init_data ldo6_data = REGULATOR_SET(ldo6, 3300, ON);
 
 
 static struct tps6586x_rtc_platform_data rtc_data = {
-	.irq = TEGRA_NR_IRQS + TPS6586X_INT_RTC_ALM1,
+	.irq = TPS6586X_INT_BASE + TPS6586X_INT_RTC_ALM1,
 	.start = {
 		.year = 2004,
 		.month = 1,

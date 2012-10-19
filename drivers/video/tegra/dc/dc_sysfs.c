@@ -29,6 +29,8 @@
 #include "dc_priv.h"
 #include "nvsd.h"
 
+ssize_t set_cam_camcorder_switch_status_kernel = 0;  
+
 static ssize_t mode_show(struct device *device,
 	struct device_attribute *attr, char *buf)
 {
@@ -294,6 +296,19 @@ static ssize_t nvdps_show(struct device *device,
 	return snprintf(buf, PAGE_SIZE, "%d\n", refresh_rate);
 }
 
+static ssize_t set_cam_camcorder_switch_status_enable_show(struct device *device,
+	struct device_attribute *attr, char *buf)
+{
+	struct nvhost_device *ndev = to_nvhost_device(device);
+	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	ssize_t res;
+
+
+	mutex_lock(&dc->lock);
+	res = snprintf(buf, PAGE_SIZE, "%d\n", set_cam_camcorder_switch_status_kernel);
+	mutex_unlock(&dc->lock);
+	return res;
+}
 
 static ssize_t nvdps_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -311,7 +326,25 @@ static ssize_t nvdps_store(struct device *dev,
 	return count;
 }
 
+static ssize_t set_cam_camcorder_switch_status_enable_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	unsigned long val = 0;
+
+	if (strict_strtoul(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	//if (val)
+        set_cam_camcorder_switch_status_kernel = val;
+		   
+	return count;
+}
+
 static DEVICE_ATTR(nvdps, S_IRUGO|S_IWUSR, nvdps_show, nvdps_store);
+
+static DEVICE_ATTR(set_cam_camcorder_switch_status, S_IRUGO|S_IWUSR, set_cam_camcorder_switch_status_enable_show, set_cam_camcorder_switch_status_enable_store);
 
 void __devexit tegra_dc_remove_sysfs(struct device *dev)
 {
@@ -321,6 +354,7 @@ void __devexit tegra_dc_remove_sysfs(struct device *dev)
 
 	device_remove_file(dev, &dev_attr_mode);
 	device_remove_file(dev, &dev_attr_nvdps);
+        device_remove_file(dev, &dev_attr_set_cam_camcorder_switch_status); 
 	device_remove_file(dev, &dev_attr_enable);
 	device_remove_file(dev, &dev_attr_stats_enable);
 	device_remove_file(dev, &dev_attr_crc_checksum_latched);
@@ -343,6 +377,7 @@ void tegra_dc_create_sysfs(struct device *dev)
 
 	error |= device_create_file(dev, &dev_attr_mode);
 	error |= device_create_file(dev, &dev_attr_nvdps);
+        error |= device_create_file(dev, &dev_attr_set_cam_camcorder_switch_status); 
 	error |= device_create_file(dev, &dev_attr_enable);
 	error |= device_create_file(dev, &dev_attr_stats_enable);
 	error |= device_create_file(dev, &dev_attr_crc_checksum_latched);

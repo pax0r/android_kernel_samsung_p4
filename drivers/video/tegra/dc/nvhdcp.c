@@ -38,6 +38,8 @@
 #include "hdmi_reg.h"
 #include "hdmi.h"
 
+#include "../../../arch/arm/mach-tegra/cpu-tegra.h"
+
 DECLARE_WAIT_QUEUE_HEAD(wq_worker);
 
 #if defined(CONFIG_MACH_SAMSUNG_P4) || defined(CONFIG_MACH_SAMSUNG_P4WIFI) || defined(CONFIG_MACH_SAMSUNG_P4LTE)
@@ -169,15 +171,31 @@ static int nvhdcp_i2c_read(struct tegra_nvhdcp *nvhdcp, u8 reg,
 		},
 	};
 
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+	tegra_cpu_lock_speed(1000000, 0);
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
+
 	do {
 		if (!nvhdcp_is_plugged(nvhdcp)) {
 			nvhdcp_err("disconnect during i2c xfer\n");
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+			tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
 			return -EIO;
 		}
 
 #ifdef __SAMSUNG_HDMI_FLAG_WORKAROUND__
 		if (tegra_dc_hdmi_hpd(dc, __func__) == 0) {
 			nvhdcp_err("%s() hpd is low\n", __func__);
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+			tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
 			return -EIO;
 		}
 #endif
@@ -196,6 +214,11 @@ static int nvhdcp_i2c_read(struct tegra_nvhdcp *nvhdcp, u8 reg,
 			mutex_lock(&nvhdcp->lock);
 		}
 	} while ((status < 0) && retries--);
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+	tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
 
 	if (status < 0) {
 		nvhdcp_err("i2c xfer error %d\n", status);
@@ -230,15 +253,31 @@ static int nvhdcp_i2c_write(struct tegra_nvhdcp *nvhdcp, u8 reg,
 	buf[0] = reg;
 	memcpy(buf + 1, data, len);
 
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+	tegra_cpu_lock_speed(1000000, 0);
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
+
 	do {
 		if (!nvhdcp_is_plugged(nvhdcp)) {
 			nvhdcp_err("disconnect during i2c xfer\n");
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+			tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
 			return -EIO;
 		}
 
 #ifdef __SAMSUNG_HDMI_FLAG_WORKAROUND__
 		if (tegra_dc_hdmi_hpd(dc, __func__) == 0) {
 			nvhdcp_err("%s() hpd is low\n", __func__);
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+			tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
 			return -EIO;
 		}
 #endif
@@ -258,6 +297,11 @@ static int nvhdcp_i2c_write(struct tegra_nvhdcp *nvhdcp, u8 reg,
 			mutex_lock(&nvhdcp->lock);
 		}
 	} while ((status < 0) && retries--);
+#ifdef SAMSUNG_SW_I2C
+#ifdef CONFIG_TEGRA_CPU_FREQ_LOCK
+	tegra_cpu_unlock_speed();
+#endif /* CONFIG_TEGRA_CPU_FREQ_LOCK */
+#endif
 
 	if (status < 0) {
 		nvhdcp_err("i2c xfer error %d\n", status);

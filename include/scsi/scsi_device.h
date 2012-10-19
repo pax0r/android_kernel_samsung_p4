@@ -180,6 +180,9 @@ struct scsi_device {
 	struct scsi_dh_data	*scsi_dh_data;
 	enum scsi_device_state sdev_state;
 	unsigned long		sdev_data[0];
+#ifdef CONFIG_USB_HOST_NOTIFY
+	int device_not_ready_retry;
+#endif
 } __attribute__((aligned(sizeof(unsigned long))));
 
 struct scsi_dh_devlist {

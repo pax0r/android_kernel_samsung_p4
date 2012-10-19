@@ -1175,16 +1175,7 @@ out:
 
 	/* Always enable CPU power request; just normal polarity is supported */
 	reg = readl(pmc + PMC_CTRL);
-#ifdef CONFIG_MACH_SAMSUNG_P5
-	/* FIXME: why read error? */
-	if (reg & TEGRA_POWER_CPU_PWRREQ_POLARITY) {
-		printk(KERN_ERR "%s: PMC_CTRL read err (0x%08x) L:%d\n",
-			__func__, reg, __LINE__);
-		reg &= ~TEGRA_POWER_CPU_PWRREQ_POLARITY;
-	}
-#else
 	BUG_ON(reg & TEGRA_POWER_CPU_PWRREQ_POLARITY);
-#endif
 	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
 	pmc_32kwritel(reg, PMC_CTRL);
 
@@ -1194,14 +1185,6 @@ out:
 	__raw_writel(pdata->core_off_timer, pmc + PMC_COREPWROFF_TIMER);
 
 	reg = readl(pmc + PMC_CTRL);
-#ifdef CONFIG_MACH_SAMSUNG_P5
-	/* FIXME: why read error? */
-	if (!(reg & TEGRA_POWER_CPU_PWRREQ_OE)) {
-		printk(KERN_ERR "%s: PMC_CTRL read err (0x%08x) L:%d\n",
-			__func__, reg, __LINE__);
-		reg |= TEGRA_POWER_CPU_PWRREQ_OE;
-	}
-#endif
 
 	if (!pdata->sysclkreq_high)
 		reg |= TEGRA_POWER_SYSCLK_POLARITY;
@@ -1217,7 +1200,9 @@ out:
 	pmc_32kwritel(reg, PMC_CTRL);
 
 	/* now enable requests */
+#ifndef CONFIG_MACH_SAMSUNG_P4LTE
 	reg |= TEGRA_POWER_SYSCLK_OE;
+#endif
 	if (!pdata->combined_req)
 		reg |= TEGRA_POWER_PWRREQ_OE;
 	pmc_32kwritel(reg, PMC_CTRL);

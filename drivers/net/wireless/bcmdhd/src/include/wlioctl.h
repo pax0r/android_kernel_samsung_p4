@@ -289,8 +289,8 @@ typedef struct wlc_fastssidinfo {
 } wlc_fastssidinfo_t;
 
 typedef BWL_PRE_PACKED_STRUCT struct wnm_url {
-	uint8	len;
-	uint8	data[1];
+	uint8   len;
+	uint8   data[1];
 } BWL_POST_PACKED_STRUCT wnm_url_t;
 
 #ifndef LINUX_POSTMOGRIFY_REMOVAL
@@ -823,7 +823,7 @@ typedef enum sup_auth_status {
 #define CRYPTO_ALGO_AES_OCB_MPDU	6
 #define CRYPTO_ALGO_NALG		7
 #ifdef BCMWAPI_WPI
-#define CRYPTO_ALGO_SMS4        11
+#define CRYPTO_ALGO_SMS4		11
 #endif /* BCMWAPI_WPI */
 #define CRYPTO_ALGO_PMK			12	/* for 802.1x supp to set PMK before 4-way */
 
@@ -880,7 +880,7 @@ typedef struct {
 #define WSEC_SWFLAG		0x0008
 #define SES_OW_ENABLED		0x0040	/* to go into transition mode without setting wep */
 #ifdef BCMWAPI_WPI
-#define SMS4_ENABLED        0x0100
+#define SMS4_ENABLED		0x0100
 #endif /* BCMWAPI_WPI */
 
 /* wsec macros for operating on the above definitions */
@@ -1681,6 +1681,8 @@ typedef struct {
 #define WL_AUTH_OPEN_SHARED		3	/* try open, then shared if open failed w/rc 13 */
 #endif
 
+
+
 /* Bit masks for radio disabled status - returned by WL_GET_RADIO */
 #define WL_RADIO_SW_DISABLE		(1<<0)
 #define WL_RADIO_HW_DISABLE		(1<<1)
@@ -1754,7 +1756,7 @@ typedef struct wl_po {
 #define WL_CHAN_FREQ_RANGE_5G_BAND2     3
 #define WL_CHAN_FREQ_RANGE_5G_BAND3     4
 
-#define WL_CHAN_FREQ_RANGE_5G_4BAND     5
+#define WL_CHAN_FREQ_RANGE_5G_4BAND	5
 
 /* phy types (returned by WLC_GET_PHYTPE) */
 #define	WLC_PHY_TYPE_A		0
@@ -1866,6 +1868,12 @@ typedef struct wl_po {
 #define	WLAN_AUTO	3	/* ACI: auto detect */
 #define	WLAN_AUTO_W_NOISE	4	/* ACI: auto - detect and non 802.11 interference */
 #define AUTO_ACTIVE	(1 << 7) /* Auto is currently active */
+
+/* AP environment */
+#define AP_ENV_DETECT_NOT_USED		0 /* We aren't using AP environment detection */
+#define AP_ENV_DENSE			1 /* "Corporate" or other AP dense environment */
+#define AP_ENV_SPARSE			2 /* "Home" or other sparse environment */
+#define AP_ENV_INDETERMINATE		3 /* AP environment hasn't been identified */
 
 typedef struct wl_aci_args {
 	int enter_aci_thresh; /* Trigger level to start detecting ACI */
@@ -2093,12 +2101,12 @@ typedef struct {
 } tx_power_legacy2_t;
 
 /* TX Power index defines */
-#define	WL_NUM_RATES_CCK		4	/* 1, 2, 5.5, 11 Mbps */
-#define	WL_NUM_RATES_OFDM		8	/* 6, 9, 12, 18, 24, 36, 48, 54 Mbps SISO/CDD */
-#define	WL_NUM_RATES_MCS_1STREAM	8	/* MCS 0-7 1-stream rates - SISO/CDD/STBC/MCS */
+#define WL_NUM_RATES_CCK			4 /* 1, 2, 5.5, 11 Mbps */
+#define WL_NUM_RATES_OFDM			8 /* 6, 9, 12, 18, 24, 36, 48, 54 Mbps SISO/CDD */
+#define WL_NUM_RATES_MCS_1STREAM	8 /* MCS 0-7 1-stream rates - SISO/CDD/STBC/MCS */
 #define WL_NUM_RATES_EXTRA_VHT		2 /* Additional VHT 11AC rates */
 #define WL_NUM_RATES_VHT			10
-#define WL_NUM_RATES_MCS32		1
+#define WL_NUM_RATES_MCS32			1
 
 #define WLC_NUM_RATES_CCK       WL_NUM_RATES_CCK
 #define WLC_NUM_RATES_OFDM      WL_NUM_RATES_OFDM
@@ -2341,9 +2349,9 @@ typedef struct txppr {
 #define WL_TX_POWER_40_S3X3_VHT					OFFSETOF(txppr_t, b40_3x3sdm_vht)
 
 /* 20 in 40MHz */
-#define WL_TX_POWER_20UL_CCK_FIRST			OFFSETOF(txppr_t, b20in40_1x1dsss)
-#define WL_TX_POWER_20UL_OFDM_FIRST			OFFSETOF(txppr_t, b20in40_1x1ofdm)
-#define WL_TX_POWER_20UL_S1x1_FIRST			OFFSETOF(txppr_t, b20in40_1x1mcs0)
+#define WL_TX_POWER_20UL_CCK_FIRST				OFFSETOF(txppr_t, b20in40_1x1dsss)
+#define WL_TX_POWER_20UL_OFDM_FIRST				OFFSETOF(txppr_t, b20in40_1x1ofdm)
+#define WL_TX_POWER_20UL_S1x1_FIRST				OFFSETOF(txppr_t, b20in40_1x1mcs0)
 
 #define WL_TX_POWER_CCK_20U_CDD_S1x2_FIRST	OFFSETOF(txppr_t, b20in40_1x2dsss)
 #define WL_TX_POWER_20UL_OFDM_CDD_FIRST		OFFSETOF(txppr_t, b20in40_1x2cdd_ofdm)
@@ -2352,7 +2360,7 @@ typedef struct txppr {
 #define WL_TX_POWER_20UL_S2x2_FIRST			OFFSETOF(txppr_t, b20in40_2x2sdm_mcs8)
 
 #define WL_TX_POWER_CCK_20U_CDD_S1x3_FIRST	OFFSETOF(txppr_t, b20in40_1x3dsss)
-#define WL_TX_POWER_20UL_OFDM_CDD_S1x3_FIRST	OFFSETOF(txppr_t, b20in40_1x3cdd_ofdm)
+#define WL_TX_POWER_20UL_OFDM_CDD_S1x3_FIRST OFFSETOF(txppr_t, b20in40_1x3cdd_ofdm)
 #define WL_TX_POWER_20UL_S1x3_FIRST			OFFSETOF(txppr_t, b20in40_1x3cdd_mcs0)
 #define WL_TX_POWER_20UL_STBC_S2x3_FIRST	OFFSETOF(txppr_t, b20in40_2x3stbc_mcs0)
 #define WL_TX_POWER_20UL_S2x3_FIRST			OFFSETOF(txppr_t, b20in40_2x3sdm_mcs8)
@@ -2453,7 +2461,7 @@ typedef struct txppr {
 
 #define WL_TX_POWER_MCS_32			OFFSETOF(txppr_t, mcs32) /* C_CHECK remove later */
 
-#define WL_TX_POWER_RATES		sizeof(struct txppr)
+#define WL_TX_POWER_RATES			sizeof(struct txppr)
 
 /* sslpnphy specifics */
 #define WL_TX_POWER_MCS20_SISO_FIRST_SSN	WL_TX_POWER_MCS20_SISO_FIRST
@@ -2494,20 +2502,20 @@ typedef struct {
 	int8  antgain[2];			/* Ant gain for each band - from SROM */
 	uint8 rf_cores;				/* count of RF Cores being reported */
 	uint8 est_Pout[4];			/* Latest tx power out estimate per RF chain */
-	uint8 est_Pout_act[4];                  /* Latest tx power out estimate per RF chain
-						 * without adjustment
-						 */
+	uint8 est_Pout_act[4];		/* Latest tx power out estimate per RF chain
+	* without adjustment
+	*/
 	uint8 est_Pout_cck;			/* Latest CCK tx power out estimate */
-	uint8 tx_power_max[4];                  /* Maximum target power among all rates */
-	uint tx_power_max_rate_ind[4];         /* Index of the rate with the max target power */
+	uint8 tx_power_max[4];		/* Maximum target power among all rates */
+	uint tx_power_max_rate_ind[4];		/* Index of the rate with the max target power */
 	uint8 user_limit[WL_TX_POWER_RATES];	/* User limit */
 	int8 board_limit[WL_TX_POWER_RATES];	/* Max power board can support (SROM) */
 	int8 target[WL_TX_POWER_RATES];			/* Latest target power */
 	int8 clm_limits[WL_CLM_NUM_RATES];		/* regulatory limits - 20, 40 or 80MHz */
 	int8 clm_limits_subchan1[WL_CLM_NUM_RATES];	/* regulatory limits - 20in40 or 40in80 */
 	int8 clm_limits_subchan2[WL_CLM_NUM_RATES];	/* regulatory limits - 20in80MHz */
-	int8 sar;				/* SAR limit for display by wl executable */
-	int8 channel_bandwidth;			/* 20, 40 or 80 MHz bandwidth? */
+	int8 sar;					/* SAR limit for display by wl executable */
+	int8 channel_bandwidth;		/* 20, 40 or 80 MHz bandwidth? */
 	uint8 version;				/* Version of the data format wlu <--> driver */
 } tx_power_t;
 
@@ -4318,14 +4326,14 @@ typedef struct assertlog_results {
 #define IV_LEN 16
 struct wapi_sta_msg_t
 {
-	uint16  msg_type;
-	uint16  datalen;
-	uint8   vap_mac[6];
-	uint8   reserve_data1[2];
-	uint8   sta_mac[6];
-	uint8   reserve_data2[2];
-	uint8   gsn[IV_LEN];
-	uint8   wie[256];
+	uint16	msg_type;
+	uint16	datalen;
+	uint8	vap_mac[6];
+	uint8	reserve_data1[2];
+	uint8	sta_mac[6];
+	uint8	reserve_data2[2];
+	uint8	gsn[IV_LEN];
+	uint8	wie[256];
 };
 #endif /* BCMWAPI_WAI */
 

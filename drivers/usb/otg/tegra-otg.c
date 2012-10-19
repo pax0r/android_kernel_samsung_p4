@@ -39,6 +39,17 @@
 #include <linux/wakelock.h>
 #endif
 
+#if defined(CONFIG_TARGET_LOCALE_KOR)
+#define _SEC_DM_
+#endif
+
+#ifdef _SEC_DM_
+struct device *usb_lock;
+/* extern struct class *sec_class; */
+int usb_access_lock;
+#endif
+
+
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
 #define  USB_ID_INT_STATUS	(1 << 1)
@@ -83,6 +94,58 @@ struct tegra_otg_data {
 #endif
 };
 static struct tegra_otg_data *tegra_clone;
+
+#ifdef _SEC_DM_
+/* for sysfs control (/sys/class/sec/.usb_lock/enable) */
+static ssize_t usb_lock_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (usb_access_lock)
+		return snprintf(buf, PAGE_SIZE, "USB_LOCK");
+	else
+		return snprintf(buf, PAGE_SIZE, "USB_UNLOCK");
+}
+
+static ssize_t usb_lock_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	struct tegra_otg_data *tegra_otg = dev_get_drvdata(dev);
+	struct otg_transceiver *otg = &tegra_otg->otg;
+	unsigned long status;
+	int value;
+
+	if (sscanf(buf, "%d", &value) != 1) {
+		pr_err("%s : Invalid value\n", __func__);
+		return -EINVAL;
+	}
+
+	if ((value < 0) || (value > 1)) {
+		pr_err("%s : Invalid value\n", __func__);
+		return -EINVAL;
+	}
+
+	status = tegra_otg->int_status;
+
+	if (value != usb_access_lock) {
+		usb_access_lock = value;
+
+		if (value == 1) {
+			pr_err("%s : Set USB Block!!\n", __func__);
+			usb_gadget_vbus_disconnect(otg->gadget);
+		} else {
+			pr_err("%s : Release USB Block!!\n", __func__);
+			if (status & USB_VBUS_STATUS) {
+				pr_err("%s : status: 0x%x\n", __func__, status);
+				usb_gadget_vbus_connect(otg->gadget);
+			}
+		}
+	}
+
+	return size;
+}
+static DEVICE_ATTR(enable, 0664, usb_lock_enable_show, usb_lock_enable_store);
+#endif
 
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
 				      unsigned int offset)
@@ -402,10 +465,16 @@ static void irq_work(struct work_struct *work)
 				tegra_stop_host(tegra);
 			} else if (from == OTG_STATE_B_PERIPHERAL
 					&& otg->gadget)
-				usb_gadget_vbus_disconnect(otg->gadget);
+#ifdef _SEC_DM_
+				if (!usb_access_lock)
+#endif
+					usb_gadget_vbus_disconnect(otg->gadget);
 		} else if (to == OTG_STATE_B_PERIPHERAL && otg->gadget) {
 			if (from != OTG_STATE_B_PERIPHERAL)
-				usb_gadget_vbus_connect(otg->gadget);
+#ifdef _SEC_DM_
+				if (!usb_access_lock)
+#endif
+					usb_gadget_vbus_connect(otg->gadget);
 #ifdef CONFIG_MACH_SAMSUNG_VARIATION_TEGRA
 #ifdef CONFIG_USB_HOST_NOTIFY
 			tegra->ndev.mode = NOTIFY_PERIPHERAL_MODE;
@@ -416,7 +485,10 @@ static void irq_work(struct work_struct *work)
 				tegra_start_host(tegra);
 #ifdef CONFIG_MACH_SAMSUNG_VARIATION_TEGRA
 			else if (from == OTG_STATE_B_PERIPHERAL) {
-				usb_gadget_vbus_disconnect(otg->gadget);
+#ifdef _SEC_DM_
+				if (!usb_access_lock)
+#endif
+					usb_gadget_vbus_disconnect(otg->gadget);
 				tegra_start_host(tegra);
 			}
 #ifdef CONFIG_USB_HOST_NOTIFY
@@ -619,6 +691,24 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	tegra_clone = tegra;
 	tegra->clk_enabled = false;
 	tegra->interrupt_mode = true;
+
+#ifdef _SEC_DM_
+	/* for sysfs control (/sys/class/sec/.usb_lock/) */
+	usb_lock = device_create(sec_class, NULL, 0, NULL, ".usb_lock");
+
+	if (IS_ERR(usb_lock)) {
+		pr_err("Failed to create device (usb_lock)!\n");
+		return PTR_ERR(usb_lock);
+	}
+
+	dev_set_drvdata(usb_lock, tegra);
+
+	if (device_create_file(usb_lock, &dev_attr_enable) < 0) {
+		pr_err("Failed to create device file(%s)!\n",
+			dev_attr_enable.attr.name);
+		device_destroy((struct class *)usb_lock, 0);
+	}
+#endif
 
 	tegra->clk = clk_get(&pdev->dev, NULL);
 	if (IS_ERR(tegra->clk)) {
