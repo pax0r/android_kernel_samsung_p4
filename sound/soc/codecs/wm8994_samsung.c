@@ -46,8 +46,6 @@
 #define WM8994_VERSION "0.1"
 #define SUBJECT "wm8994_samsung.c"
 
-#define CONFIG_SND_SOC_P5_AUDIO_HKTW 1 //jm.choi_2010.07.04 add for audio
-
 #if defined(CONFIG_VIDEO_TV20) && defined(CONFIG_SND_S5P_WM8994_MASTER)
 #define HDMI_USE_AUDIO
 #endif
@@ -894,11 +892,6 @@ static int wm8994_set_headset_analog_vol(struct snd_kcontrol *kcontrol,
 		return;
 
 #else
-#if defined(CONFIG_SND_SOC_P5_AUDIO_HKTW)
-	unsigned short analog_vol_table[] = {0x17, 0x17, 0x17, 0x17, 0x17, 0x17,
-						0x1A, 0x1D, 0x21, 0x24, 0x27,
-						0x29, 0x2c, 0x30, 0x34, 0x36};
-#else
 	/* Europe */
 	unsigned short analog_vol_table_EUR[] = {0x17, 0x17, 0x17, 0x17, 0x17,
 						0x17, 0x1A, 0x1D, 0x1F, 0x21,
@@ -918,7 +911,6 @@ static int wm8994_set_headset_analog_vol(struct snd_kcontrol *kcontrol,
 		analog_vol_table = analog_vol_table_USA;
 	else
 		analog_vol_table = analog_vol_table_EUR;
-#endif
 #endif
 #else
 	unsigned short analog_vol_table[] = {0x17, 0x17, 0x17, 0x17, 0x17, 0x17,

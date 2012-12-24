@@ -964,6 +964,7 @@ static int link_pm_notifier_event(struct notifier_block *this,
 {
 	struct link_pm_data *pm_data =
 			container_of(this, struct link_pm_data,	pm_notifier);
+	struct usb_device *usbdev = pm_data->usb_ld->usbdev;
 #ifdef CONFIG_UMTS_MODEM_XMM6262
 	struct modem_ctl *mc = if_usb_get_modemctl(pm_data);
 #endif
@@ -995,6 +996,7 @@ static int link_pm_notifier_event(struct notifier_block *this,
 				0);
 			pr_info("%s: post resume\n", __func__);
 		}
+		usb_set_autosuspend_delay(usbdev, 200);
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;

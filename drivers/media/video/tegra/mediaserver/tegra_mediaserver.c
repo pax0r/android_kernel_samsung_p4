@@ -81,10 +81,14 @@ static int mediasrv_open(struct inode *inode, struct file *file)
 	struct tegra_avp_lib *lib = &manager->lib;
 	int e;
 
+	pr_info("%s: tegra_mediaserver-debug\n", __func__);
+
 	node = kzalloc(sizeof(struct tegra_mediasrv_node), GFP_KERNEL);
 	CHECK_NULL(node, node_alloc_fail);
 	INIT_LIST_HEAD(&node->blocks);
 	node->mediasrv = mediasrv;
+
+	pr_info("%s: tegra_mediaserver-debug\n", __func__);
 
 	mutex_lock(&mediasrv->lock);
 	nonseekable_open(inode, file);
@@ -421,6 +425,8 @@ static long mediasrv_unlocked_ioctl(struct file *file, unsigned int cmd,
 	struct tegra_mediasrv_info *mediasrv = mediasrv_info;
 	struct tegra_mediasrv_node *node = file->private_data;
 	int e = -ENODEV;
+
+	pr_info("%s: tegra_mediaserver-debug, cmd[%u]\n", __func__, cmd);
 
 	mutex_lock(&mediasrv->lock);
 

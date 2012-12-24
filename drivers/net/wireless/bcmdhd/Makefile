@@ -116,7 +116,7 @@ endif
 ##############################################################
 # dhd_sec_feature.h
 
-REGION_CODE := $(CONFIG_WLAN_REGION_CODE)
+REGION_CODE := 100
 
 ifeq ($(CONFIG_TARGET_LOCALE_KOR),y)
 REGION_CODE=200

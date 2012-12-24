@@ -48,8 +48,6 @@
 
 #ifdef CONFIG_MACH_SAMSUNG_VARIATION_TEGRA
 #define SAMSUNG_HDMI_SW_I2C 13
-#define SAMSUNG_MHL_SW_I2C 14
-#define SAMSUNG_HDMI_SW_I2C_TIMEOUT	50000
 #endif
 
 static int bit_test;	/* see if the line-setting functions work	*/
@@ -95,9 +93,6 @@ static inline void scllo(struct i2c_algo_bit_data *adap)
 static int sclhi(struct i2c_algo_bit_data *adap)
 {
 	unsigned long start;
-#ifdef CONFIG_MACH_SAMSUNG_VARIATION_TEGRA
-	int cnt = 0;
-#endif
 
 	setscl(adap, 1);
 
@@ -120,13 +115,7 @@ static int sclhi(struct i2c_algo_bit_data *adap)
 		 * We cannot help using spinlock during i2c_transfer.
 		 * 13 is the ID of MHL DDC.
 		 */
-		if ((adap->nr == SAMSUNG_HDMI_SW_I2C) || (adap->nr == SAMSUNG_MHL_SW_I2C)) {
-			if (cnt++ > SAMSUNG_HDMI_SW_I2C_TIMEOUT) {
-				printk(KERN_ERR "%s: i2c-%d timeout\n", __func__, adap->nr);
-				return -ETIMEDOUT;
-			}
-		}
-		else
+		if (adap->nr != SAMSUNG_HDMI_SW_I2C)
 #endif
 		cond_resched();
 
@@ -380,7 +369,7 @@ static int try_address(struct i2c_adapter *i2c_adap,
 		i2c_stop(adap);
 		udelay(adap->udelay);
 #ifdef CONFIG_MACH_SAMSUNG_VARIATION_TEGRA
-		if ((i2c_adap->nr == SAMSUNG_HDMI_SW_I2C) || (i2c_adap->nr == SAMSUNG_MHL_SW_I2C))
+		if (i2c_adap->nr == SAMSUNG_HDMI_SW_I2C)
 			udelay(1000);
 		else
 #endif

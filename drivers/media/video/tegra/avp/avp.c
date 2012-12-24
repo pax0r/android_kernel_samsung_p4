@@ -68,7 +68,7 @@ static u32 avp_debug_mask =
 	AVP_DBG_TRACE_XPC	|
 	/* AVP_DBG_TRACE_XPC_IRQ	| */
 	/* AVP_DBG_TRACE_XPC_MSG	| */
-	/* AVP_DBG_TRACE_TRPC_MSG	| */
+	AVP_DBG_TRACE_TRPC_MSG	|
 	AVP_DBG_TRACE_XPC_CONN	|
 	AVP_DBG_TRACE_TRPC_CONN	|
 	AVP_DBG_TRACE_LIB;
@@ -1419,6 +1419,7 @@ static int tegra_avp_open_fops(struct inode *inode, struct file *file)
 {
 	struct tegra_avp_info *avp;
 
+	pr_info("%s: avp-debug\n", __func__);
 	nonseekable_open(inode, file);
 	return tegra_avp_open(&avp);
 }
@@ -1447,6 +1448,7 @@ out:
 static int tegra_avp_release_fops(struct inode *inode, struct file *file)
 {
 	struct tegra_avp_info *avp = tegra_avp;
+	pr_info("%s: avp-debug\n", __func__);
 	return tegra_avp_release(avp);
 }
 
