@@ -140,6 +140,14 @@ config CPU_FREQ_DEFAULT_GOV_LIONHEART
 	  is very aggressive. When it comes to smoothness (not considering
 	  battery drain), a tuned conservative delivers more as compared to
 	  a tuned ondemand.
+
+config CPU_FREQ_DEFAULT_GOV_AGGRESSIVE
+	bool "aggressive"
+	select CPU_FREQ_GOV_AGGRESSIVE
+	help
+	A modified conservative governor.
+        This features earlysuspend, hotplugging,
+        and tweaks to make it more aggressive.
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -261,6 +269,13 @@ config CPU_FREQ_GOV_LIONHEART
 	help
 	  'LionHeart' - a more aggressive conservative governor approach.
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_AGGRESSIVE
+	tristate "'aggressive' governor"
+	depends on CPU_FREQ
+	help
+	  'aggressive' - this governor is a modified conservative.
+	   If in doubt, say N.
 
 menu "x86 CPU frequency scaling drivers"
 depends on X86
