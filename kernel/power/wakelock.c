@@ -23,6 +23,12 @@
 #include <linux/proc_fs.h>
 #endif
 #include "power.h"
+/*grzwolf-beg*/
+// mdelay(..)
+#include <linux/delay.h>
+// kernel_power_off etc.
+#include <linux/reboot.h>
+/*grzwolf-end*/
 
 enum {
 	DEBUG_EXIT_SUSPEND = 1U << 0,
@@ -62,6 +68,150 @@ static struct wake_lock deleted_wake_locks;
 static ktime_t last_sleep_time_update;
 static int wait_for_wakeup;
 
+/*grzwolf-beg*/
+// globale Variable merkt sich l2_hsic wakelock
+struct wake_lock *g_l2hsic = NULL;
+
+// globale Variablen für Ausgaben
+char g_buf[100];
+int g_l2init = 0;
+int g_l2destroy = 0;
+int g_exp = 0;
+int g_kpo = 0;
+long long int g_l2visits = 0;
+long long int g_wlvisits = 0;
+static const char *const g_originated[] = {"/proc/grzwolf", "exp", "shutdown"};
+static ktime_t g_wlpst;
+static ktime_t g_maxpst;
+
+// virtuelles file /proc/grzwolf 
+static struct proc_dir_entry* grzwolf_file;
+
+// prepare data
+static void prepare_data(char* data, const int datalen, int origin)
+{
+  // wakelock Statistik
+  int co = 0; 
+  int wc = 0;  
+  int ec = 0;
+  
+  // Offset Schreiben Datei
+  int ofs = 0;
+
+  // aktuelle Uhrzeit
+  struct timespec ts_entry;
+  struct rtc_time tm;
+  char now[100]; 
+ 
+  // lesbare ns Zeiten
+  char tbuf1[50] = "0";    
+  char tbuf2[50] = "0";    
+  char tbuf3[50] = "0";    
+  unsigned long nanosec_rem;
+  long long int tpst = 0;
+
+  // lesbare Darstellung der ns Laufzeit prevent_suspend_time
+  if ( g_l2hsic != NULL ) {
+      tpst = ktime_to_ns(g_l2hsic->stat.prevent_suspend_time); 
+     nanosec_rem = do_div(tpst, 1000000000);
+     sprintf(tbuf1, "%5lu.%06lu ", (unsigned long) tpst, nanosec_rem / 1000);
+     co = g_l2hsic->stat.count;
+     ec = g_l2hsic->stat.expire_count;
+     wc = g_l2hsic->stat.wakeup_count;
+  }
+
+  // lesbare Darstellung der aktuellen ns Laufzeit pst
+  tpst = ktime_to_ns(g_wlpst); 
+  nanosec_rem = do_div(tpst, 1000000000);
+  sprintf(tbuf2, "%5lu.%06lu ", (unsigned long) tpst, nanosec_rem / 1000);
+
+  // lesbare Darstellung der max. ns Laufzeit pst
+  tpst = ktime_to_ns(g_maxpst); 
+  nanosec_rem = do_div(tpst, 1000000000);
+  sprintf(tbuf3, "%5lu.%06lu ", (unsigned long) tpst, nanosec_rem / 1000);
+
+  // aktuelle Uhrzeit
+  getnstimeofday(&ts_entry);
+  rtc_time_to_tm(ts_entry.tv_sec, &tm);
+  sprintf(now, "(%d-%02d-%02d %02d:%02d:%02d UTC)", tm.tm_year + 1900, 
+                                                    tm.tm_mon + 1, 
+                                                    tm.tm_mday,
+                    			            tm.tm_hour, 
+                                                    tm.tm_min, 
+                                                    tm.tm_sec);
+
+  // normale Ausgaben
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "/*grzwolf-sta*/\n");
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "now:\t%s\n", now);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "origin:\t%s\n", g_originated[origin]);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "total wakelock visits:\t%lld\n", g_wlvisits);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic init:\t%i\n", g_l2init);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic destroy:\t%i\n", g_l2destroy);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic visits:\t%lld\n", g_l2visits);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic count:\t%i\n", co);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic expire count:\t%i\n", ec);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic wake count:\t%i\n", wc);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2_hsic prevent suspend time:\t%s\n", tbuf1); 
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2 current pst:\t%s\n", tbuf2); 
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "l2 max pst:\t%s\n", tbuf3); 
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "forced expire wakelocks:\t%i\n", g_exp);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "forced kernel power off:\t%i\n", g_kpo);
+  ofs += snprintf(data+ofs, max(datalen-ofs,0), "/*grzwolf-sto*/\n");
+}
+
+// Daten in kernel log schreiben
+static void write_data(int origin)
+{
+  // Daten vorbereiten
+  char data[1000];
+  prepare_data(data, 999, origin);
+
+  // kernel log
+  printk(data); 
+}
+
+// schreiben in virtuelle Datei
+static int grzwolf_show(struct seq_file *m, void *v)
+{
+     // prepare data
+     char data[1000];
+     prepare_data(data, 999, 0);
+
+     // sequential file write
+     seq_printf(m, "%s", data);
+
+     // post data
+     write_data(0);
+
+     return 0;
+}
+static int grzwolf_open(struct inode *inode, struct file *file)
+{
+     return single_open(file, grzwolf_show, NULL);
+}
+static const struct file_operations grzwolf_fops = {
+     .owner	= THIS_MODULE,
+     .open	= grzwolf_open,
+     .read	= seq_read,
+     .llseek	= seq_lseek,
+     .release	= single_release,
+};
+static int __init grzwolf_init(void)
+{
+     // create process to write into /proc/grzwolf
+     grzwolf_file = proc_create("grzwolf", 0, NULL, &grzwolf_fops);
+     // error handling
+     if (!grzwolf_file) {
+         return -ENOMEM;
+     }
+     return 0;
+}
+static void __exit grzwolf_exit(void)
+{
+     remove_proc_entry("grzwolf", NULL);
+}
+/*grzwolf-end*/
+
 int get_expired_time(struct wake_lock *lock, ktime_t *expire_time)
 {
 	struct timespec ts;
@@ -71,10 +221,22 @@ int get_expired_time(struct wake_lock *lock, ktime_t *expire_time)
 	struct timespec sleep;
 	long timeout;
 
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\n", lock->stat.count, "get_expired_time");
+   printk(g_buf);
+}
+/*grzwolf-end*/
 	if (!(lock->flags & WAKE_LOCK_AUTO_EXPIRE))
 		return 0;
 	get_xtime_and_monotonic_and_sleep_offset(&kt, &tomono, &sleep);
 	timeout = lock->expires - jiffies;
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\ttimeout=%li\n", lock->stat.count, "get_expired_time", timeout);
+   printk(g_buf);
+}
+/*grzwolf-end*/
 	if (timeout > 0)
 		return 0;
 	jiffies_to_timespec(-timeout, &delta);
@@ -149,11 +311,23 @@ static void wake_unlock_stat_locked(struct wake_lock *lock, int expired)
 	ktime_t now;
 	if (!(lock->flags & WAKE_LOCK_ACTIVE))
 		return;
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\n", lock->stat.count, "wake_unlock_stat_locked");
+   printk(g_buf);
+}
+/*grzwolf-end*/
 	if (get_expired_time(lock, &now))
 		expired = 1;
 	else
 		now = ktime_get();
 	lock->stat.count++;
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\n", lock->stat.count, "wake_unlock_stat_locked");
+   printk(g_buf);
+}
+/*grzwolf-end*/
 	if (expired)
 		lock->stat.expire_count++;
 	duration = ktime_sub(now, lock->stat.last_time);
@@ -171,9 +345,16 @@ static void wake_unlock_stat_locked(struct wake_lock *lock, int expired)
 
 static void update_sleep_wait_stats_locked(int done)
 {
+/*grzwolf-beg*/
+        long long int tpst = 0; 
+/*grzwolf-end*/
 	struct wake_lock *lock;
 	ktime_t now, etime, elapsed, add;
 	int expired;
+
+/*grzwolf-beg*/
+        add = ktime_set(0, 0); 
+/*grzwolf-end*/
 
 	now = ktime_get();
 	elapsed = ktime_sub(now, last_sleep_time_update);
@@ -187,10 +368,29 @@ static void update_sleep_wait_stats_locked(int done)
 			lock->stat.prevent_suspend_time = ktime_add(
 				lock->stat.prevent_suspend_time, add);
 		}
-		if (done || expired)
-			lock->flags &= ~WAKE_LOCK_PREVENTING_SUSPEND;
-		else
-			lock->flags |= WAKE_LOCK_PREVENTING_SUSPEND;
+/*grzwolf-beg*/
+//		if (done || expired)
+//			lock->flags &= ~WAKE_LOCK_PREVENTING_SUSPEND;
+//		else
+//			lock->flags |= WAKE_LOCK_PREVENTING_SUSPEND;
+
+
+                if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+                   // nicht wie oben gesamtes pst merken, sondern für aktuellen wakelock                  
+                   g_wlpst = ktime_add(g_wlpst, add); 
+                   tpst = ktime_to_ns(g_wlpst);
+                   // max. pst merken
+                   if ( tpst > ktime_to_ns(g_maxpst) ) {
+                      g_maxpst = g_wlpst;
+                   } 
+                } 
+
+		if ( done || expired ) {
+		   lock->flags &= ~WAKE_LOCK_PREVENTING_SUSPEND;
+		} else {
+		   lock->flags |= WAKE_LOCK_PREVENTING_SUSPEND;
+                }
+/*grzwolf-end*/
 	}
 	last_sleep_time_update = now;
 }
@@ -239,6 +439,12 @@ static long has_wake_lock_locked(int type)
 
 	BUG_ON(type >= WAKE_LOCK_TYPE_COUNT);
 	list_for_each_entry_safe(lock, n, &active_wake_locks[type], link) {
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\ttimeout=%lu\n", lock->stat.count, "has_wake_lock_locked", lock->expires - jiffies);
+   printk(g_buf);
+}
+/*grzwolf-end*/
 		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
 			long timeout = lock->expires - jiffies;
 			if (timeout <= 0)
@@ -384,12 +590,26 @@ void wake_lock_init(struct wake_lock *lock, int type, const char *name)
 	spin_lock_irqsave(&list_lock, irqflags);
 	list_add(&lock->link, &inactive_locks);
 	spin_unlock_irqrestore(&list_lock, irqflags);
+/*grzwolf-beg erstes Auftreten von l2_hsic --> speichern in g_l2hsic*/
+	if ( strcmp(lock->name, "l2_hsic") == 0 ) {	
+	   // Adresse merken
+           g_l2hsic = lock;
+	   // init counter
+           g_l2init++; 
+        }
+/*grzwolf-end*/
 }
 EXPORT_SYMBOL(wake_lock_init);
 
 void wake_lock_destroy(struct wake_lock *lock)
 {
 	unsigned long irqflags;
+/*grzwolf-beg letztes Auftreten von l2_hsic --> speichern in g_l2hsic*/
+	if ( strcmp(lock->name, "l2_hsic") == 0 ) {	
+           g_l2hsic = NULL;
+           g_l2destroy++; 
+        }
+/*grzwolf-end*/
 	if (debug_mask & DEBUG_WAKE_LOCK)
 		pr_info("wake_lock_destroy name=%s\n", lock->name);
 	spin_lock_irqsave(&list_lock, irqflags);
@@ -421,6 +641,12 @@ static void wake_lock_internal(
 	unsigned long irqflags;
 	long expire_in;
 
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\t%i\n", lock->stat.count, "wake_lock_internal", has_timeout);
+   printk(g_buf);
+}
+/*grzwolf-end*/
 	spin_lock_irqsave(&list_lock, irqflags);
 	type = lock->flags & WAKE_LOCK_TYPE_MASK;
 	BUG_ON(type >= WAKE_LOCK_TYPE_COUNT);
@@ -444,7 +670,7 @@ static void wake_lock_internal(
 		lock->stat.last_time = ktime_get();
 #endif
 	}
-	list_del(&lock->link);
+	list_del(&lock->link);  
 	if (has_timeout) {
 		if (debug_mask & DEBUG_WAKE_LOCK)
 			pr_info("wake_lock: %s, type %d, timeout %ld.%03lu\n",
@@ -491,13 +717,81 @@ static void wake_lock_internal(
 
 void wake_lock(struct wake_lock *lock)
 {
+/*grzwolf-beg*/
+     //
+     // Fangschaltung triggert, wenn g_wlpst > 10s (Erfahrungswert)
+     // !! hier geht es bei jedem wakelock 'rein !!
+     //
+     long long int tpst = ktime_to_ns(g_wlpst);
+     if ( tpst > 10000000000 ) {
+        if ( g_l2hsic != NULL ) {
+           // das ist der "vermißte" Befehl vom Modem-IF im Amokfall
+           wake_lock_timeout(g_l2hsic, msecs_to_jiffies(50));
+           // Reparaturzähler 
+           g_exp++; 
+           // log
+           write_data(1);
+           // in wakelock Verwaltung die pst Zähler zurücksetzen 
+           g_wlpst = ktime_set(0, 0);
+           g_maxpst = ktime_set(0, 0);
+        }
+     } 
+
+     //
+     // hier geht es nur bei einem neuen l2_hsic wakelock 'rein
+     // 
+     if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+        // ein neuer wakelock wurde ausgelöst
+        sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\n", lock->stat.count, "wake_lock");
+        printk(g_buf);
+        // in wakelock Verwaltung den pst Zähler zurücksetzen 
+        g_wlpst = ktime_set(0, 0);
+        // Zahl der reinen l2_hsic Besuche merken
+        g_l2visits++;
+     }
+  
+     // Gesamtzahl der Besuche in dieser Funktion merken
+     g_wlvisits++;
+
+     // Korrektur eines Überlaufproblems  
+     if ( g_l2hsic != NULL ) {
+        // pst Laufzeit
+        tpst = ktime_to_ns(g_l2hsic->stat.prevent_suspend_time);
+        // stat.prevent_suspend_time overflow gelegentlich beobachtet
+        // Ursache: ktime_add(..) ist nicht sicher bzgl. Überlauf ?
+        if ( tpst < 0 ) {
+           // kmsg
+           sprintf(g_buf, "grzwolf stat.prevent_suspend_time overflow fixed\t%lld\n", tpst);
+           printk(g_buf);
+           // pst = 0 
+           g_l2hsic->stat.prevent_suspend_time = ktime_set(0, 0);
+        }
+     }
+
+     //
+     // allerletzte Massnahme --> hartes Abschalten Tab nach >60min l2_hsic Laufzeit
+     //          
+     if ( tpst > 3600000000000 ) {
+        g_kpo++;
+        write_data(2);
+        printk("grzwolf: shutdown in 5 seconds.\n");
+	mdelay(5000);
+        kernel_power_off();
+     }
+/*grzwolf-end*/
 	wake_lock_internal(lock, 0, 0);
 }
 EXPORT_SYMBOL(wake_lock);
 
 void wake_lock_timeout(struct wake_lock *lock, long timeout)
 {
-	wake_lock_internal(lock, timeout, 1);
+/*grzwolf-beg*/
+if ( strcmp(lock->name, "l2_hsic") == 0 ) {
+   sprintf(g_buf, "grzwolf_l2hsic #:%i\t%s\n", lock->stat.count, "wake_lock_timeout");
+   printk(g_buf);
+}
+/*grzwolf-end*/
+        wake_lock_internal(lock, timeout, 1);
 }
 EXPORT_SYMBOL(wake_lock_timeout);
 
@@ -505,6 +799,7 @@ void wake_unlock(struct wake_lock *lock)
 {
 	int type;
 	unsigned long irqflags;
+
 	spin_lock_irqsave(&list_lock, irqflags);
 	type = lock->flags & WAKE_LOCK_TYPE_MASK;
 #ifdef CONFIG_WAKELOCK_STAT
@@ -606,6 +901,11 @@ static int __init wakelocks_init(void)
 #ifdef CONFIG_WAKELOCK_STAT
 	proc_create("wakelocks", S_IRUGO, NULL, &wakelock_stats_fops);
 #endif
+/*grzwolf-beg:*/
+        grzwolf_init();
+        g_maxpst = ktime_set(0, 0); 
+        g_wlpst = ktime_set(0, 0); 
+/*grzwolf-end:*/
 
 	return 0;
 
@@ -631,6 +931,9 @@ static void  __exit wakelocks_exit(void)
 #ifdef CONFIG_WAKELOCK_STAT
 	remove_proc_entry("wakelocks", NULL);
 #endif
+/*grzwolf-beg*/
+        grzwolf_exit();
+/*grzwolf-end*/
 	destroy_workqueue(suspend_work_queue);
 	destroy_workqueue(sync_work_queue);
 	platform_driver_unregister(&power_driver);
