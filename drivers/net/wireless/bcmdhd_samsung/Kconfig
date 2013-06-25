@@ -37,8 +37,8 @@ config BRCM_CCX
 	default n
 
 config WLAN_COUNTRY_CODE
-	tristate "---Broadcom WiFi Driver for 5GH channel setting"
-   	depends on WLAN
+	bool "---Broadcom WiFi Driver for 5GH channel setting"
+   	depends on WLAN && (BCM4330 || BCM4334 || BCM43241)
    	default	n
 
 config WLAN_REGION_CODE
