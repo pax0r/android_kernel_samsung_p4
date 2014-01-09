@@ -1680,6 +1680,17 @@ void wm8994_shutdown(struct snd_pcm_substream *substream,
 		return;
 	}
 
+#if defined(CONFIG_MACH_SAMSUNG_P4) || defined(CONFIG_MACH_SAMSUNG_P4WIFI) \
+	|| defined(CONFIG_MACH_SAMSUNG_P4LTE) \
+	|| defined(CONFIG_TARGET_LOCALE_KOR)
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		wm8994->stream_state &=  ~(PCM_STREAM_CAPTURE);
+		wm8994->codec_state &= ~(CAPTURE_ACTIVE);
+	} else {
+		wm8994->codec_state &= ~(PLAYBACK_ACTIVE);
+		wm8994->stream_state &= ~(PCM_STREAM_PLAYBACK);
+	}
+#else
 	/* check and sync the capture flag */
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		wm8994->stream_state &=  ~(PCM_STREAM_CAPTURE);
@@ -1702,6 +1713,7 @@ void wm8994_shutdown(struct snd_pcm_substream *substream,
 			wm8994_write(codec, WM8994_AIF1_DAC1_FILTERS_1, val);
 		}
 	}
+#endif
 
 	/* codec off */
 	if ((wm8994->codec_state == DEACTIVE) &&
@@ -1730,6 +1742,24 @@ void wm8994_shutdown(struct snd_pcm_substream *substream,
 	DEBUG_LOG("Preserve codec state = [0x%X], Stream State = [0x%X]",
 			wm8994->codec_state, wm8994->stream_state);
 
+#if defined(CONFIG_MACH_SAMSUNG_P4) || defined(CONFIG_MACH_SAMSUNG_P4WIFI) \
+	|| defined(CONFIG_MACH_SAMSUNG_P4LTE) \
+	|| defined(CONFIG_TARGET_LOCALE_KOR)
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		wm8994_disable_rec_path(codec);
+		wm8994->codec_state &= ~(CAPTURE_ACTIVE);
+	} else {
+		if (wm8994->codec_state & CALL_ACTIVE) {
+			int val;
+
+			val = wm8994_read(codec, WM8994_AIF1_DAC1_FILTERS_1);
+			val &= ~(WM8994_AIF1DAC1_MUTE_MASK);
+			val |= (WM8994_AIF1DAC1_MUTE);
+			wm8994_write(codec, WM8994_AIF1_DAC1_FILTERS_1, val);
+		} else
+			wm8994_disable_path(codec);
+	}
+#endif
 }
 
 #define WM8994_RATES SNDRV_PCM_RATE_44100

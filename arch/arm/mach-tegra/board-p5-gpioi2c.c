@@ -231,10 +231,10 @@ static struct platform_device tegra_gpio_i2c16_device = {
 };
 
 static struct max17042_platform_data max17042_pdata = {
-	.sdi_capacity = 0x340A,
-	.sdi_vfcapacity = 0x478A,
-	.atl_capacity = 0x349A,
-	.atl_vfcapacity = 0x4630,
+	.sdi_capacity = 0x2EE0,
+	.sdi_vfcapacity = 0x3E80,
+	.atl_capacity = 0x3022,
+	.atl_vfcapacity = 0x4024,
 	.fuel_alert_line = GPIO_FUEL_ALRT,
 };
 
@@ -338,9 +338,20 @@ static void tegra_set_dap_connection(bool on)
 
 		das_writel(reg_val, APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0);
 	} else {
+		/* DAP3 */
 		das_writel(DAP_CTRL_SEL_DAP3, APB_MISC_DAS_DAP_CTRL_SEL_1);
 		das_writel((DAP_MS_SEL_MASTER | DAP_CTRL_SEL_DAP2),
 			APB_MISC_DAS_DAP_CTRL_SEL_2);
+		/* DAP4 */
+		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_3);
+
+		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
+		reg_val |= (0 << DAP_MS_SEL_SHIFT);
+
+		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
+		reg_val |= (DAP_CTRL_SEL_DAP2 << DAP_CTRL_SEL_SHIFT);
+
+		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_3);
 	}
 }
 
@@ -439,7 +450,7 @@ static void sii9234_hw_reset(void)
 {
 	struct regulator *reg;
 
-	gpio_set_value_cansleep(GPIO_MHL_RST, 1);
+	gpio_set_value_cansleep(GPIO_MHL_RST, 0);
 	reg = regulator_get(NULL, "vdd_ldo7");
 	if (IS_ERR_OR_NULL(reg)) {
 		pr_err("%s: failed to get vdd_ldo7 regulator\n", __func__);
@@ -460,6 +471,9 @@ static void sii9234_hw_reset(void)
 	gpio_set_value_cansleep(GPIO_HDMI_EN1, 1);
 
 	usleep_range(5000, 10000);
+	gpio_set_value_cansleep(GPIO_MHL_RST, 1);
+
+	usleep_range(10000, 20000);
 	gpio_set_value_cansleep(GPIO_MHL_RST, 0);
 
 	usleep_range(10000, 20000);

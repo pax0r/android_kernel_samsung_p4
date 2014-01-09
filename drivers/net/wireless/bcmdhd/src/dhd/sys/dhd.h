@@ -257,6 +257,7 @@ typedef struct dhd_pub {
 	int   wlfc_enabled;
 	void* wlfc_state;
 #endif
+	bool	roam_env_detection;
 	bool	dongle_isolation;
 	bool	dongle_trap_occured;
 	int   hang_was_sent;
@@ -700,6 +701,7 @@ extern char fw_down_path[MOD_PARAM_PATHLEN];
 #define DHD_DEL_IF	-0xe
 #define DHD_BAD_IF	-0xf
 
+#define WL_AUTO_ROAM_TRIGGER -75
 #ifdef PROP_TXSTATUS
 /* Please be mindful that total pkttag space is 32 octets only */
 typedef struct dhd_pkttag {

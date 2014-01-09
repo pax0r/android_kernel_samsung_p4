@@ -1002,6 +1002,11 @@ int get_cp_active_state(void)
 	return gpio_get_value(lte_modem_data.gpio_phone_active);
 }
 
+void set_slave_wake()
+{
+	gpio_set_value(lte_modem_data.gpio_slave_wakeup, 1);
+}
+
 static struct resource lte_modem_res[] = {
 	[0] = {
 		.name = "lte_phone_active",
@@ -1075,5 +1080,4 @@ static int __init init_modem(void)
 
 	return 0;
 }
-late_initcall(init_modem);
-/*device_initcall(init_modem);*/
+device_initcall(init_modem);

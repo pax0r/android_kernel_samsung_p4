@@ -23,6 +23,7 @@
 #define	__SAMSUNG_HDMI_FLAG_WORKAROUND__
 #endif
 
+#define	CONFIG_MHL_SII9234_ALLOW_SUSPEND
 #define SUBJECT "CONNECTOR_DRIVER"
 
 #define ACC_CONDEV_DBG(format, ...) \

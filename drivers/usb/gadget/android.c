@@ -55,6 +55,9 @@
 #define USB_ETH_RNDIS y
 #include "f_rndis.c"
 #include "rndis.c"
+#ifdef CONFIG_MACH_SAMSUNG_P4LTE
+#include "f_dm.c"
+#endif
 #include "u_ether.c"
 
 MODULE_AUTHOR("Mike Lockwood");
@@ -66,9 +69,16 @@ static const char longname[] = "Gadget Android";
 extern void detect_cable_status(void);
 static int first_usb_function_enable = 0;
 
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+static int composite_string_index;
+#endif
+
 /* Default vendor and product IDs, overridden by userspace */
 #define VENDOR_ID		0x18D1
 #define PRODUCT_ID		0x0001
+#ifdef CONFIG_MACH_SAMSUNG_P4LTE
+#define DM_PORT_NUM            1
+#endif
 
 struct android_usb_function {
 	char *name;
@@ -743,6 +753,19 @@ static struct android_usb_function accessory_function = {
 	.ctrlrequest	= accessory_function_ctrlrequest,
 };
 
+#ifdef CONFIG_MACH_SAMSUNG_P4LTE
+static int dm_function_bind_config(struct android_usb_function *f,
+					struct usb_configuration *c)
+{
+	return dm_bind_config(c, DM_PORT_NUM);
+}
+
+static struct android_usb_function dm_function = {
+	.name           = "dm",
+	.bind_config    = dm_function_bind_config,
+};
+#endif
+
 static int audio_source_function_init(struct android_usb_function *f,
 			struct usb_composite_dev *cdev)
 {
@@ -814,6 +837,9 @@ static struct android_usb_function *supported_functions[] = {
 	&mass_storage_function,
 	&accessory_function,
 	&audio_source_function,
+#ifdef CONFIG_MACH_SAMSUNG_P4LTE
+	&dm_function,
+#endif
 	NULL
 };
 
@@ -957,6 +983,7 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 	char *name;
 	char buf[256], *b;
 	int err;
+	int check_rndis = 0;
 
 	mutex_lock(&dev->mutex);
 
@@ -976,6 +1003,23 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 			err = android_enable_function(dev, name);
 			if (err)
 				pr_err("android_usb: Cannot enable '%s'", name);
+#if defined(CONFIG_MACH_SAMSUNG_P4LTE)
+	if (!strcmp(name, "rndis"))
+		check_rndis = 1;
+	if (!strcmp(name, "adb")) {
+		if (!check_rndis) {
+			err = android_enable_function(dev, "acm");
+			if (err)
+				pr_err(
+					"android_usb: Cannot enable '%s'",
+			name);
+		}
+			err = android_enable_function(dev, "dm");
+			if (err)
+				pr_err(
+					"android_usb: Cannot enable 'dm'");
+			}
+#endif
 		}
 	}
 
@@ -1200,6 +1244,10 @@ static int android_bind(struct usb_composite_dev *cdev)
 		device_desc.bcdDevice = __constant_cpu_to_le16(0x9999);
 	}
 
+
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+	composite_string_index = 4;
+#endif
 	dev->cdev = cdev;
 
 	return 0;

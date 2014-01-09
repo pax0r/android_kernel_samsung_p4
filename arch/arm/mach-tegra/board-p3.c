@@ -1478,9 +1478,9 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[1] = {
 			.phy_config = &hsic_phy_config,
 			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 0,
+			.power_down_on_bus_suspend = 1,
 			.phy_type = TEGRA_USB_PHY_TYPE_HSIC,
-			.default_enable = true,
+			.default_enable = false,
 	},
 #else
 	[1] = {

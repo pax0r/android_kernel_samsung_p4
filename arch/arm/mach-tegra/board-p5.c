@@ -90,6 +90,11 @@
 #ifdef CONFIG_KERNEL_DEBUG_SEC
 #include <linux/kernel_sec_common.h>
 #endif
+
+#if defined(CONFIG_SEC_KEYBOARD_DOCK)
+#include <linux/sec_keyboard_struct.h>
+#endif
+
 #if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
 #include <mach/tdmb_pdata.h>
 #endif
@@ -171,7 +176,8 @@ static int write_bootloader_message(char *cmd, int mode)
 		strcpy(bootmsg.command, "boot-recovery");
 #ifdef CONFIG_KERNEL_DEBUG_SEC
 		reboot_mode = REBOOT_MODE_RECOVERY;
-		kernel_sec_set_debug_level(KERNEL_SEC_DEBUG_LEVEL_MID);
+		kernel_sec_set_debug_level(KERNEL_SEC_DEBUG_LEVEL_LOW);
+		kernel_sec_clear_upload_magic_number();
 		state = 1;	/* Set USB path to AP */
 		sec_set_param(param_index_usbsel, &state);
 #endif
@@ -397,11 +403,11 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_74[] = {
 	/* name		parent		rate		enabled */
 	{ "uartb",	"pll_p",	216000000,	true},
 	{ "uartc",      "pll_m",        600000000,      false},
-	{ "blink",      "clk_32k",      32768,          true},
+	{ "blink",      "clk_32k",      32768,          false},
 	{ "pll_p_out4",	"pll_p",	24000000,	true },
+	{ "pwm",	"clk_32k",	32768,		false},
 	/*Set PLLC for PLCK 74Mhz (560Mhz)*/
 	{ "pll_c",	"clk_m",	560000000,	true},
-	{ "pwm",	"pll_c",	560000000,	true},
 	{ "pll_a",	NULL,		11289600,	true},
 	{ "pll_a_out0",	NULL,		11289600,	true},
 	{ "clk_dev1",   "pll_a_out0",   0,              true},
@@ -411,8 +417,6 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_74[] = {
 	{ "audio_2x",	"audio",	22579200,	true},
 	{ "spdif_out",	"pll_a_out0",	5644800,	false},
 	{ "vde",	"pll_m",	240000000,	false},
-	{ "sclk", NULL, 240000000,  true},
-	{ "hclk", "sclk", 240000000,  true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -420,11 +424,11 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_76[] = {
 	/* name		parent		rate		enabled */
 	{ "uartb",	"pll_p",	216000000,	true},
 	{ "uartc",      "pll_m",        600000000,      false},
-	{ "blink",      "clk_32k",      32768,          true},
+	{ "blink",      "clk_32k",      32768,          false},
 	{ "pll_p_out4",	"pll_p",	24000000,	true },
+	{ "pwm",	"clk_32k",	32768,		false},
 	/*Set PLLC for PLCK 76Mhz (570Mhz)*/
 	{ "pll_c",	"clk_m",	570000000,	true},
-	{ "pwm",	"pll_c",	560000000,	true},
 	{ "pll_a",	NULL,		11289600,	true},
 	{ "pll_a_out0",	NULL,		11289600,	true},
 	{ "clk_dev1",   "pll_a_out0",   0,              true},
@@ -434,8 +438,6 @@ static __initdata struct tegra_clk_init_table p3_clk_init_tbl_pclk_76[] = {
 	{ "audio_2x",	"audio",	22579200,	true},
 	{ "spdif_out",	"pll_a_out0",	5644800,	false},
 	{ "vde",	"pll_m",	240000000,	false},
-	{ "sclk", NULL, 240000000,  true},
-	{ "hclk", "sclk", 240000000,  true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -813,7 +815,7 @@ static struct p3_battery_platform_data p3_battery_platform = {
 	.inform_charger_connection = tsp_inform_charger_connection,
 #endif
 
-#ifdef CONFIG_TARGET_LOCALE_KOR
+#if defined(CONFIG_TARGET_LOCALE_KOR)
 	.temp_high_threshold = 63000,	/* 580 (spec) + 35 (dT) */
 	.temp_high_recovery = 45500,	/* 417 */
 	.temp_low_recovery = 2300,		/* -10 */
@@ -1092,7 +1094,7 @@ static void tegra_usb_ldo_en(int active, int instance)
 			if (ret == 0)
 				usb_data.usb_regulator_on[instance] = 1;
 			else
-				pr_err("%s: failed to turn on \\
+				pr_err("%s: failed to turn on \
 					vdd_ldo6 regulator\n", __func__);
 		}
 	} else {
@@ -1106,58 +1108,90 @@ static void tegra_usb_ldo_en(int active, int instance)
 
 #ifdef CONFIG_30PIN_CONN
 #ifdef CONFIG_SEC_KEYBOARD_DOCK
-static struct sec_keyboard_callbacks *keyboard_callbacks;
-static int check_sec_keyboard_dock(bool attached)
+#if 0
+struct uart_platform_data {
+        void(*send_to_keyboard)(unsigned int val);
+};
+
+struct kbd_callbacks {
+        void (*get_data)(struct kbd_callbacks *, unsigned int val);
+#if 0
+        int (*check_keyboard_dock)(struct kbd_callbacks *, int val);
+#endif
+};
+
+static struct kbd_callbacks sec_kdb_cb;
+
+static void uart_to_keyboard(unsigned int val)
 {
-	if (keyboard_callbacks && keyboard_callbacks->check_keyboard_dock)
-		return keyboard_callbacks->
-			check_keyboard_dock(keyboard_callbacks, attached);
-	return 0;
+        if (sec_kdb_cb && sec_kdb_cb->get_data)
+                sec_kdb_cb->get_data(sec_kdb_cb, val);
 }
 
-static void check_uart_path(bool en)
+static int check_keyboard(struct kbd_callbacks *, int val)
 {
-	int gpio_uart_sel;
-	gpio_uart_sel = GPIO_UART_SEL;
-
-	if (en)
-		gpio_direction_output(gpio_uart_sel, 1);
-	else
-		gpio_direction_output(gpio_uart_sel, 0);
-
-	printk(KERN_DEBUG "[Keyboard] uart_sel : %d\n",
-		gpio_get_value(gpio_uart_sel));
+        if (sec_kdb_cb && sec_kdb_cb->check_keyboard_dock)
+                return sec_kdb_cb->check_keyboard_dock(sec_kdb_cb, val);
+        return 0;
 }
 
-static void sec_keyboard_register_cb(struct sec_keyboard_callbacks *cb)
+static void sec_keyboard_register_callbacks(struct kbd_callbacks *cb)
 {
-	keyboard_callbacks = cb;
+        sec_kdb_cb = cb;
 }
 
-static struct sec_keyboard_platform_data kbd_pdata = {
-	.accessory_irq_gpio = GPIO_ACCESSORY_INT,
-	.acc_power = tegra_acc_power,
-	.check_uart_path = check_uart_path,
-	.register_cb = sec_keyboard_register_cb,
-	.wakeup_key = NULL,
+static struct dock_keyboard_platform_data kbd_pdata {
+        .enable= ,
+        .disable= ,
+        .register_cb =sec_keyboard_register_callbacks,
 };
 
 static struct platform_device sec_keyboard = {
-	.name	= "sec_keyboard",
-	.id	= -1,
-	.dev = {
-		.platform_data = &kbd_pdata,
-	}
+        .name   = "sec_keyboard",
+        .id     = -1,
+        .dev = {
+                .platform_data = &kbd_pdata,
+        }
 };
+
+static struct uart_platform_data uart_pdata {
+        .send_to_keyboard =uart_to_keyboard,
+};
+
+#else
+static int dock_wakeup(void)
+{
+        unsigned long status =
+               readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
+
+       if (status & TEGRA_WAKE_GPIO_PI5) {
+                writel(TEGRA_WAKE_GPIO_PI5,
+                       IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
+       }
+
+       return status & TEGRA_WAKE_GPIO_PI5 ? KEY_WAKEUP : KEY_RESERVED;
+}
+
+static struct dock_keyboard_platform_data kbd_pdata = {
+        .acc_power = tegra_acc_power,
+        .wakeup_key = dock_wakeup,
+        .accessory_irq_gpio = GPIO_ACCESSORY_INT,
+};
+
+static struct platform_device sec_keyboard = {
+        .name   = "sec_keyboard",
+        .id     = -1,
+        .dev = {
+                .platform_data = &kbd_pdata,
+        }
+};
+#endif
 #endif
 
 struct acc_con_platform_data acc_con_pdata = {
 	.otg_en = tegra_otg_en,
 	.acc_power = tegra_acc_power,
 	.usb_ldo_en = tegra_usb_ldo_en,
-#ifdef CONFIG_SEC_KEYBOARD_DOCK
-	.check_keyboard = check_sec_keyboard_dock,
-#endif
 	.accessory_irq_gpio = GPIO_ACCESSORY_INT,
 	.dock_irq_gpio = GPIO_DOCK_INT,
 	.mhl_irq_gpio = GPIO_MHL_INT,
@@ -1375,10 +1409,17 @@ static int P3_s5k5ccgx_torch(int enable)
 	}
 #endif
 	gpio_set_value(GPIO_CAM_FLASH_EN, 0);
-	if (enable)
-		aat1274_write(FLASH_MOVIE_MODE_CURRENT_79_PERCENT);
-	else
-		gpio_set_value(GPIO_CAM_MOVIE_EN, 0);
+        switch (enable) {
+                case 42:  // High mode available with magic number
+                        aat1274_write(FLASH_MOVIE_MODE_CURRENT_100_PERCENT);
+                        break;
+                case 0:
+                        gpio_set_value(GPIO_CAM_MOVIE_EN, 0);
+                        break;
+                default:
+                        aat1274_write(FLASH_MOVIE_MODE_CURRENT_79_PERCENT);
+                        break;
+        }
 	return 0;
 }
 
@@ -1587,9 +1628,9 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[1] = {
 			.phy_config = &hsic_phy_config,
 			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 0,
+			.power_down_on_bus_suspend = 1,
 			.phy_type = TEGRA_USB_PHY_TYPE_HSIC,
-			.default_enable = true,
+			.default_enable = false,
 	},
 #else
 	[1] = {
@@ -1750,35 +1791,11 @@ void p3_stmpe1801_gpio_setup_board(void)
 static void p3_power_off(void)
 {
 	int ret;
-	u32 value;
 
-	/* control modem power off before pmic control */
-	gpio_set_value(GPIO_RESET_REQ_N, 0);
-	udelay(500);    /* min 300us */
-	gpio_set_value(GPIO_CP_RST, 0);
-	gpio_set_value(GPIO_CP_ON, 0);
-	mdelay(50);
+	ret = tps6586x_power_off();
+	if (ret)
+		pr_err("p3: failed to power off\n");
 
-	/* prevent leakage current after power off */
-	if (system_rev >= 9)
-		gpio_set_value(GPIO_ACC_EN, 0);
-	mdelay(50);
-
-	value = gpio_get_value(GPIO_TA_nCONNECTED);
-	if (!value) {
-		pr_debug("%s: TA_nCONNECTED! Reset!\n", __func__);
-		ret = tps6586x_soft_rst();
-		if (ret)
-			pr_err("p3: failed to tps6586x_soft_rst(ret:%d)\n",
-				ret);
-	} else {
-		ret = tps6586x_power_off();
-		if (ret)
-			pr_err("p3: failed to power off(ret:%d)\n", ret);
-	}
-
-	mdelay(1000);
-	pr_alert("p3: system halted.\n");
 	while (1)
 		;
 }
@@ -1955,7 +1972,7 @@ static void __init tegra_p3_init(void)
 #endif
 
 	p3_usb_init();
-	/* p3_gps_init(); */
+	p3_gps_init();
 	p3_panel_init();
 	p3_sensors_init();
 	p3_emc_init();

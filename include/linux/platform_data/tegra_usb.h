@@ -42,6 +42,7 @@ struct tegra_ehci_platform_data {
 #ifdef CONFIG_LINK_DEVICE_USB
 	void (*noti_host_states)(int type);
 	int (*get_cp_active_state)(void);
+	void (*set_slave_wake)();
 #endif
 };
 

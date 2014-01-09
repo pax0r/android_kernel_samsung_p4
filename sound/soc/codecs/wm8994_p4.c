@@ -556,7 +556,11 @@ struct gain_info_t recording_gain_table[RECORDING_GAIN_NUM] = {
 		.mode = RECORDING_REC_MAIN,
 		.reg  = WM8994_LEFT_LINE_INPUT_1_2_VOLUME,	/* 18h */
 		.mask = WM8994_IN1L_VOL_MASK,
+#if defined(CONFIG_MACH_SAMSUNG_P4LTE)
+		.gain = WM8994_IN1L_VU | 0x1d
+#else
 		.gain = WM8994_IN1L_VU | 0x11
+#endif
 	}, {
 		.mode = RECORDING_REC_MAIN,
 		.reg  = WM8994_INPUT_MIXER_3,		/* 29h */
@@ -567,7 +571,7 @@ struct gain_info_t recording_gain_table[RECORDING_GAIN_NUM] = {
 		.mode = RECORDING_REC_MAIN,
 		.reg  = WM8994_AIF1_ADC1_LEFT_VOLUME,	/* 400h */
 		.mask = WM8994_AIF1ADC1L_VOL_MASK,
-		.gain = WM8994_AIF1ADC1_VU | 0xc0   /* +0dB */
+		.gain = WM8994_AIF1ADC1_VU | 0xd0   /* +0dB */
 	}, {
 		.mode = RECORDING_REC_MAIN,
 		.reg  = WM8994_AIF1_ADC1_RIGHT_VOLUME,	/* 401h */
@@ -943,7 +947,7 @@ struct gain_info_t voipcall_gain_table[VOIPCALL_GAIN_NUM] = {
 		.mode = VOIPCALL_MAINMIC,
 		.reg  = WM8994_LEFT_LINE_INPUT_1_2_VOLUME,	/* 18h */
 		.mask = WM8994_IN1L_VOL_MASK,
-		.gain = WM8994_IN1L_VU | 0x0A
+		.gain = WM8994_IN1L_VU | 0x0B
 	}, {
 		.mode = VOIPCALL_MAINMIC,
 		.reg  = WM8994_INPUT_MIXER_3,		/* 29h */

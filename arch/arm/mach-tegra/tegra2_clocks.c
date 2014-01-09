@@ -2531,8 +2531,10 @@ struct clk tegra_list_periph_clks[] = {
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	0x31E,	600000000, mux_pllp_plld_pllc_clkm,	MUX), /* scales with voltage and process_id */
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	0x31E,	600000000, mux_pllp_plld_pllc_clkm,	MUX), /* scales with voltage and process_id */
 	PERIPH_CLK("usbd",	"fsl-tegra-udc",	NULL,	22,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
-	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
-	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
+	PERIPH_CLK("usb2",	"tegra-ehci.1",		"usb2",	58,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
+	PERIPH_CLK("usb2min",	"tegra-ehci.1",		"usb2min",	95,	0,	0x31E,	60000000, mux_clk_m,			0), /* requires min voltage */
+	PERIPH_CLK("usb3",	"tegra-ehci.2",		"usb3",	59,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
+	PERIPH_CLK("usb3min",	"tegra-ehci.2",		"usb3min",	96,	0,	0x31E,	60000000, mux_clk_m,			0), /* requires min voltage */
 	PERIPH_CLK("dsia",	"tegradc.0",		"dsia",	48,	0,	0x31E,	500000000, mux_plld_out0,		0), /* scales with voltage */
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	0x31E,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	0x31E,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),

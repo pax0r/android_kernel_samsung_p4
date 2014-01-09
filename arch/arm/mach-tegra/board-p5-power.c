@@ -182,7 +182,7 @@ static struct regulator_init_data ldo6_data = REGULATOR_SET(ldo6, 3300, ON);
 
 
 static struct tps6586x_rtc_platform_data rtc_data = {
-	.irq = TEGRA_NR_IRQS + TPS6586X_INT_RTC_ALM1,
+	.irq = TPS6586X_INT_BASE + TPS6586X_INT_RTC_ALM1,
 	.start = {
 		.year = 2004,
 		.month = 1,
@@ -301,7 +301,13 @@ int __init p3_regulator_init(void)
 
 	i2c_register_board_info(4, p3_regulators, 1);
 
-/*	regulator_has_full_constraints();*/
+        /* invoke this regulator call so that the core regulator code
+         * will automatically disable any regulators it finds that are
+         * on but not referenced in late init.  that allows drivers to
+         * control the regulators dynamically after cleaning up the
+         * boot state of the regulators.
+         */
+	regulator_has_full_constraints();
 
 #ifdef CONFIG_SAMSUNG_LPM_MODE
 	if (charging_mode_from_boot) {

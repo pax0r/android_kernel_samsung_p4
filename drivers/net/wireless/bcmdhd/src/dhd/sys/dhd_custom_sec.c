@@ -55,6 +55,7 @@ int dhd_read_macaddr(struct dhd_info *dhd, struct ether_addr *mac)
 	char randommac[3]    = {0};
 	char buf[18]         = {0};
 	char *filepath_efs       = MACINFO_EFS;
+	char buf_temp[18] = {0};
 #ifdef CONFIG_TARGET_LOCALE_VZW
 	char *nvfilepath       = "/data/misc/wifi/.nvmac.info";
 #else
@@ -104,12 +105,18 @@ start_readmac:
 		}
 	}
 
-	if (ret)
+	if (ret) {
+		if (!strncmp(buf, "12:34:56", 8)) {
+			strncpy(buf_temp, buf+9, 8);
+			snprintf(buf, 18, "00:12:34:%s", buf_temp);
+			DHD_ERROR(("Wrong prefix is detected, 12:34:56 is"
+				" changed as 00:12:34 : %d\n", sizeof(buf)));
+		}
 		sscanf(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
 			   (unsigned int *)&(mac->octet[0]), (unsigned int *)&(mac->octet[1]),
 			   (unsigned int *)&(mac->octet[2]), (unsigned int *)&(mac->octet[3]),
 			   (unsigned int *)&(mac->octet[4]), (unsigned int *)&(mac->octet[5]));
-	else
+	} else
 		DHD_ERROR(("dhd_bus_start: Reading from the '%s' returns 0 bytes\n", filepath_efs));
 
 	if (fp)
@@ -564,14 +571,14 @@ int dhd_check_module_cid(dhd_pub_t *dhd)
 	ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, cis_buf,
 				sizeof(cis_buf), 0, 0);
 	if (ret < 0) {
-		DHD_ERROR(("%s: CIS reading failed, err=%d\n",
+		DHD_TRACE(("%s: CIS reading failed, err=%d\n",
 			__FUNCTION__, ret));
 		return ret;
 	} else {
 #ifdef BCM4334_CHIP
 		unsigned char semco_id[4] = {0x00, 0x00, 0x33, 0x33};
 		unsigned char semco_id_sh[4] = {0x00, 0x00, 0xFB, 0x50};	//for SHARP FEM(new)
-		DHD_ERROR(("%s: CIS reading success, err=%d\n",
+		DHD_ERROR(("%s: CIS reading success, ret=%d\n",
 			__FUNCTION__, ret));
 #ifdef DUMP_CIS
 		dump_cis(cis_buf, 48);
@@ -704,7 +711,7 @@ int dhd_check_module_mac(dhd_pub_t *dhd)
 	ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, cis_buf,
 		sizeof(cis_buf), 0, 0);
 	if (ret < 0) {
-		DHD_ERROR(("%s: CIS reading failed, err=%d\n", __func__,
+		DHD_TRACE(("%s: CIS reading failed, err=%d\n", __func__,
 			ret));
 		return ret;
 	} else {

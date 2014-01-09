@@ -725,16 +725,16 @@ static struct sec_jack_zone sec_jack_zones[] = {
 		.jack_type = SEC_HEADSET_3POLE,
 	},
 	{
-		/* 0 < adc <= 900, unstable zone, default to 3pole if it stays
+		/* 0 < adc <= 1200, unstable zone, default to 3pole if it stays
 		 * in this range for a 400ms (20ms delays, 20 samples)
 		 */
-		.adc_high = 900,
+		.adc_high = 1200,
 		.delay_ms = 20,
 		.check_count = 20,
 		.jack_type = SEC_HEADSET_3POLE,
 	},
 	{
-		/* 900 < adc <= 2000, unstable zone, default to 4pole if it
+		/* 1200 < adc <= 2000, unstable zone, default to 4pole if it
 		 * stays in this range for 400ms (20ms delays, 20 samples)
 		 */
 		.adc_high = 2000,
@@ -766,22 +766,22 @@ static struct sec_jack_zone sec_jack_zones[] = {
 /* To support 3-buttons earjack */
 static struct sec_jack_buttons_zone sec_jack_buttons_zones[] = {
 	{
-		/* 0 <= adc <=180, stable zone */
+		/* 0 <= adc <=190, stable zone */
 		.code		= KEY_MEDIA,
 		.adc_low	= 0,
-		.adc_high	= 180,
+		.adc_high	= 190,
 	},
 	{
-		/* 200 <= adc <= 390, stable zone */
+		/* 191 <= adc <= 440, stable zone */
 		.code		= KEY_VOLUMEUP,
-		.adc_low	= 200,
-		.adc_high	= 390,
+		.adc_low	= 191,
+		.adc_high	= 440,
 	},
 	{
-		/* 430 <= adc <= 820, stable zone */
+		/* 441 <= adc <= 1100, stable zone */
 		.code		= KEY_VOLUMEDOWN,
-		.adc_low	= 430,
-		.adc_high	= 820,
+		.adc_low	= 441,
+		.adc_high	= 1100,
 	},
 };
 
@@ -1849,6 +1849,7 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 #ifdef CONFIG_LINK_DEVICE_USB
 			.noti_host_states = set_host_states,
 			.get_cp_active_state = get_cp_active_state,
+			.set_slave_wake = set_slave_wake,
 #endif
 	},
 };
@@ -1941,8 +1942,6 @@ static void p3_usb_init(void)
 	platform_device_register(&tegra_otg_device);
 
 	platform_device_register(&tegra_udc_device);
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
-	platform_device_register(&tegra_ehci3_device);
 }
 
 #if defined CONFIG_LINK_DEVICE_HSIC
@@ -1956,6 +1955,18 @@ static int __init tegra_ehci2_hsic_init(void)
 	return platform_device_register(&tegra_ehci2_device);
 };
 late_initcall(tegra_ehci2_hsic_init);
+#endif
+#if defined CONFIG_LINK_DEVICE_USB
+static int __init tegra_ehci3_usb_init(void)
+{
+#ifdef CONFIG_SAMSUNG_LPM_MODE
+	if (charging_mode_from_boot)
+		return 0;
+#endif
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
+	return platform_device_register(&tegra_ehci3_device);
+};
+late_initcall(tegra_ehci3_usb_init);
 #endif
 
 static void p4_check_hwrev(void)

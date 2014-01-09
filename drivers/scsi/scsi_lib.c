@@ -840,9 +840,23 @@ void scsi_io_completion(struct scsi_cmnd *cmd, unsigned int good_bytes)
 				/* Detected disc change.  Set a bit
 				 * and quietly refuse further access.
 				 */
-				cmd->device->changed = 1;
 				description = "Media Changed";
+#ifdef CONFIG_USB_HOST_NOTIFY
+				if (cmd->device->host->by_usb) {
+					if (description)
+						scmd_printk(KERN_INFO,
+						cmd, "%s\n", description);
+					scsi_print_result(cmd);
+					action = ACTION_RETRY;
+					cmd->device->device_not_ready_retry = 1;
+				} else {
+					cmd->device->changed = 1;
+					action = ACTION_FAIL;
+				}
+#else
+				cmd->device->changed = 1;
 				action = ACTION_FAIL;
+#endif
 			} else {
 				/* Must have been a power glitch, or a
 				 * bus reset.  Could not have been a
@@ -914,6 +928,18 @@ void scsi_io_completion(struct scsi_cmnd *cmd, unsigned int good_bytes)
 				description = "Device not ready";
 				action = ACTION_FAIL;
 			}
+#ifdef CONFIG_USB_HOST_NOTIFY
+			if (cmd->device->host->by_usb) {
+				if (!cmd->device->device_not_ready_retry) {
+					if (description)
+						scmd_printk(KERN_INFO,
+						cmd, "%s\n", description);
+					scsi_print_result(cmd);
+					action = ACTION_DELAYED_RETRY;
+					cmd->device->device_not_ready_retry = 1;
+				}
+			}
+#endif
 			break;
 		case VOLUME_OVERFLOW:
 			/* See SSC3rXX or current. */

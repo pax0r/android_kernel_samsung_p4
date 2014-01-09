@@ -103,6 +103,7 @@
 
 #define UTMIP_XCVR_CFG0		0x808
 #define   UTMIP_XCVR_SETUP(x)			(((x) & 0xf) << 0)
+#define   UTMIP_XCVR_FSSLEW(x)		(((x) & 0x3) << 6)
 #define   UTMIP_XCVR_LSRSLEW(x)			(((x) & 0x3) << 8)
 #define   UTMIP_XCVR_LSFSLEW(x)			(((x) & 0x3) << 10)
 #define   UTMIP_FORCE_PD_POWERDOWN		(1 << 14)
@@ -267,6 +268,7 @@
 
 #define UTMIP_XCVR_CFG0		0x808
 #define   UTMIP_XCVR_SETUP(x)			(((x) & 0xf) << 0)
+#define   UTMIP_XCVR_FSSLEW(x)		(((x) & 0x3) << 6)
 #define   UTMIP_XCVR_LSRSLEW(x)			(((x) & 0x3) << 8)
 #define   UTMIP_XCVR_LSFSLEW(x)			(((x) & 0x3) << 10)
 #define   UTMIP_FORCE_PD_POWERDOWN		(1 << 14)
@@ -603,7 +605,7 @@ static u32 utmip_rctrl_val, utmip_tctrl_val;
 #define TDP_SRC_ON_MS	 100
 #define TDPSRC_CON_MS	 40
 
-#define CONNECT_DETECT_TIMEOUT		25000
+#define CONNECT_DETECT_TIMEOUT		50000
 
 #define AHB_MEM_PREFETCH_CFG3		0xe0
 #define AHB_MEM_PREFETCH_CFG4		0xe4
@@ -700,6 +702,10 @@ static struct tegra_utmip_config utmip_default[] = {
 		.idle_wait_delay = 17,
 		.elastic_limit = 16,
 		.term_range_adj = 6,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 0,
+		.xcvr_lsfslew = 1,
+		.xcvr_lsrslew = 1,
 #if defined(CONFIG_MACH_SAMSUNG_P5SKT) || defined(CONFIG_MACH_SAMSUNG_P5KORWIFI)
 		.xcvr_setup = 14,
 #elif defined(CONFIG_MACH_SAMSUNG_P5) || defined(CONFIG_MACH_SAMSUNG_P5WIFI)
@@ -711,10 +717,6 @@ static struct tegra_utmip_config utmip_default[] = {
 #else
 		.xcvr_setup = 9,
 #endif
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
 	},
 	[2] = {
 		.hssync_start_delay = 9,
@@ -841,7 +843,7 @@ static int utmip_pad_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 
 static int utmi_wait_register(void __iomem *reg, u32 mask, u32 result)
 {
-	unsigned long timeout = 3000;
+	unsigned long timeout = 10000;
 	do {
 		if ((readl(reg) & mask) == result)
 			return 0;
@@ -1246,6 +1248,10 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	val |= UTMIP_XCVR_LSRSLEW(config->xcvr_lsrslew);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	val |= UTMIP_XCVR_HSSLEW_MSB(0x8);
+#endif
+
+#if defined(CONFIG_MACH_SAMSUNG_P5) || defined(CONFIG_MACH_SAMSUNG_P5WIFI)
+	val |= UTMIP_XCVR_FSSLEW(0x3);
 #endif
 	writel(val, base + UTMIP_XCVR_CFG0);
 
@@ -2725,6 +2731,75 @@ err0:
 	return ERR_PTR(err);
 }
 
+static int usb_enable_phy_clk(struct tegra_usb_phy *phy)
+{
+	int val;
+	int ret;
+	void __iomem *addr = phy->regs + USB_SUSP_CTRL;
+
+	/* USB_SUSP_CLR bit requires pulse write */
+	val = readl(addr);
+	writel(val | USB_SUSP_CLR, addr);
+
+	/* we need check both PHY clock and USB core clock is ON */
+	ret = utmi_wait_register(addr, USB_PHY_CLK_VALID, USB_PHY_CLK_VALID);
+	if (ret)
+		pr_err("failed turn on EHCI port PHY clock(CLK_VALID)\n");
+
+	ret = utmi_wait_register(addr, USB_CLKEN, USB_CLKEN);
+	if (ret)
+		pr_err("failed turn on EHCI port PHY clock (CLKEN)\n");
+
+	val = readl(addr);
+	writel(val & (~USB_SUSP_CLR), addr);
+
+	return ret;
+}
+
+static int usb_disable_phy_clk(struct tegra_usb_phy *phy)
+{
+	int val;
+	int ret;
+	void __iomem *base = phy->regs;
+
+	switch (phy->instance) {
+	case 0:
+		/* USB_SUSP_SET bit requires pulse write */
+		val = readl(base + USB_SUSP_CTRL);
+		writel(val | USB_SUSP_SET, base + USB_SUSP_CTRL);
+		udelay(10);
+		writel(val & (~USB_SUSP_SET), base + USB_SUSP_CTRL);
+		break;
+	case 1:
+	case 2:
+		val = readl(base + USB_PORTSC1);
+		writel(val | USB_PORTSC1_PHCD, base + USB_PORTSC1);
+		break;
+	default:
+		pr_err("unknow USB instance: %d\n", phy->instance);
+	}
+
+	ret = utmi_wait_register(base + USB_SUSP_CTRL,
+			USB_PHY_CLK_VALID, 0);
+	if (ret)
+		pr_err("failed turn off EHCI port PHY clock\n");
+
+	return ret;
+}
+
+int tegra_usb_set_phy_clock(struct tegra_usb_phy *phy, char clock_on)
+{
+	int ret;
+
+	BUG_ON(phy == NULL);
+	if (clock_on)
+		ret = usb_enable_phy_clk(phy);
+	else
+		ret = usb_disable_phy_clk(phy);
+
+	return ret;
+}
+
 int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	int ret = 0;
@@ -3121,10 +3196,6 @@ int tegra_usb_phy_bus_idle(struct tegra_usb_phy *phy)
 		/* safe to enable RPU on STROBE at all times during idle */
 		val |= UHSIC_RPU_STROBE;
 		writel(val, base + UHSIC_PADS_CFG1);
-
-		val = readl(base + USB_USBCMD);
-		val &= ~USB_USBCMD_RS;
-		writel(val, base + USB_USBCMD);
 
 		if (uhsic_config->usb_phy_ready &&
 					uhsic_config->usb_phy_ready())

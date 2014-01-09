@@ -319,9 +319,20 @@ static void tegra_set_dap_connection(bool on)
 
 		das_writel(reg_val, APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0);
 	} else {
+		/* DAP3 */
 		das_writel(DAP_CTRL_SEL_DAP3, APB_MISC_DAS_DAP_CTRL_SEL_1);
 		das_writel((DAP_MS_SEL_MASTER | DAP_CTRL_SEL_DAP2),
 			APB_MISC_DAS_DAP_CTRL_SEL_2);
+		/* DAP4 */
+		reg_val = das_readl(APB_MISC_DAS_DAP_CTRL_SEL_3);
+
+		reg_val &= ~(DAP_MS_SEL_DEFAULT_MASK << DAP_MS_SEL_SHIFT);
+		reg_val |= (0 << DAP_MS_SEL_SHIFT);
+
+		reg_val &= ~(DAP_CTRL_SEL_DEFAULT_MASK << DAP_CTRL_SEL_SHIFT);
+		reg_val |= (DAP_CTRL_SEL_DAP2 << DAP_CTRL_SEL_SHIFT);
+
+		das_writel(reg_val, APB_MISC_DAS_DAP_CTRL_SEL_3);
 	}
 }
 

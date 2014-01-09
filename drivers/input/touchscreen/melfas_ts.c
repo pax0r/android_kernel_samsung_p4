@@ -1494,6 +1494,7 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	int i	= 0;
 	int irq = 0;
 	int val_firm = -1;
+	int retries = 3;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("[TSP] melfas_ts_probe: need I2C_FUNC_I2C\n");
@@ -1566,14 +1567,19 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	firmware_update(ts);
 
-	ret_core 	= check_firmware_core(ts, &val_core);
-	ret_private = check_firmware_private(ts, &val_private);
-	ret_public 	= check_firmware_public(ts, &val_public);
+	while (retries--) {
+		ret_core	= check_firmware_core(ts, &val_core);
+		ret_private	= check_firmware_private(ts, &val_private);
+		ret_public	= check_firmware_public(ts, &val_public);
 
-	if (ret_core || ret_private || ret_public) {
+		if (!ret_core && !ret_private && !ret_public)
+			break;
+	}
+
+	if (retries == 0)
 		pr_err("[TSP] Failed to check firmware version : %d , %d, %d\n",
 			ret_core, ret_private , ret_public);
-	}
+
 	pr_info("[TSP] %s panel - current firmware version(ISC mode) : 0x%x , 0x%x, 0x%x\n",
 		ts->touch_id ? "Iljin" : "Melfas", val_core, val_private , val_public);
 #endif

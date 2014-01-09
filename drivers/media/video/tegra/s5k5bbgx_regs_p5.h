@@ -885,8 +885,8 @@ static const u32 mode_sensor_init[] = {
 0x0F120000, //REG_2TC_PCFG_uRotation						2	700001E6
 //Preview3 for Fixed 24fps Camcorder
 0x002A01E8,
-0x0F120320, 	//REG_3TC_PCFG_usWidth							2	700001E8
-0x0F120258, 	//REG_3TC_PCFG_usHeight 						2	700001EA
+0x0F120280, 	//REG_3TC_PCFG_usWidth							2	700001E8
+0x0F1201E0, 	//REG_3TC_PCFG_usHeight 						2	700001EA
 0x0F120005, 	//REG_3TC_PCFG_Format							2	700001EC
 0x0F12222E, 	//REG_3TC_PCFG_usMaxOut4KHzRate 				2	700001EE
 0x0F12222E, 	//REG_3TC_PCFG_usMinOut4KHzRate 				2	700001F0

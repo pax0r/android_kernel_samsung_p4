@@ -1087,6 +1087,9 @@ rest_resume:
 	lcdonoff = TRUE;
 	/* msleep_interruptible(250); */
 	/* gpio_set_value(cmc623_state.gpio.bl_reset, GPIO_LEVEL_HIGH); */
+#if defined(CONFIG_MACH_SAMSUNG_P4LTE)
+	msleep(200);
+#endif
 	gpio_set_value(cmc623_state.gpio.lvds_n_shdn, GPIO_LEVEL_HIGH);
 	queue_delayed_work(lcd_bl_workqueue, &lcd_bl_work, HZ/3);
 	lcd_bl_workqueue_statue = 1;
